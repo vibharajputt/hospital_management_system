@@ -1,6 +1,7 @@
 package com.example.hospital_backend.entity;
 
 import com.example.hospital_backend.enums.Role;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -22,6 +23,7 @@ public class User {
     @Column(nullable = false, unique = true)
     private String phone;
 
+    @JsonIgnore
     @Column(nullable = false)
     private String password;
 
@@ -30,7 +32,9 @@ public class User {
     private Role role;
 
     private Boolean isVerified = false;
+
     private Boolean isActive = true;
+
     private LocalDateTime createdAt;
 
     public User() {
