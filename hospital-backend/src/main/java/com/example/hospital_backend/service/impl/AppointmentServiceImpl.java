@@ -14,10 +14,12 @@ import com.example.hospital_backend.repository.AppointmentRepository;
 import com.example.hospital_backend.repository.DoctorRepository;
 import com.example.hospital_backend.repository.PatientRepository;
 import com.example.hospital_backend.service.AppointmentService;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -40,6 +42,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     @Override
+    @Transactional
     public AppointmentResponse book(AppointmentRequest request) {
         Patient patient = patientRepository.findById(request.getPatientId())
                 .orElseThrow(() -> new ResourceNotFoundException("Patient not found"));
@@ -47,53 +50,59 @@ public class AppointmentServiceImpl implements AppointmentService {
         Doctor doctor = doctorRepository.findById(request.getDoctorId())
                 .orElseThrow(() -> new ResourceNotFoundException("Doctor not found"));
 
-        LocalDateTime dateTime = LocalDateTime.parse(request.getAppointmentDateTime());
+        LocalDateTime dt = LocalDateTime.parse(request.getAppointmentDateTime());
 
-        boolean alreadyBooked = appointmentRepository.existsByDoctorIdAndAppointmentDateTimeAndStatusIn(
-                doctor.getId(),
-                dateTime,
-                Arrays.asList(AppointmentStatus.BOOKED, AppointmentStatus.CONFIRMED));
+        // If a row already exists for doctor+dt, handle it
+        Appointment existing = appointmentRepository.findByDoctorIdAndAppointmentDateTime(doctor.getId(), dt)
+                .orElse(null);
 
-        if (alreadyBooked) {
+        if (existing != null) {
+            if (existing.getStatus() == AppointmentStatus.CANCELLED) {
+                // Reuse cancelled slot (same row)
+                existing.setPatient(patient);
+                existing.setSymptoms(request.getSymptoms());
+                existing.setNotes(request.getNotes());
+                existing.setStatus(AppointmentStatus.BOOKED);
+                return map(appointmentRepository.save(existing));
+            }
             throw new ConflictException("This slot is already booked for the doctor");
         }
 
-        Appointment a = new Appointment();
-        a.setPatient(patient);
-        a.setDoctor(doctor);
-        a.setAppointmentDateTime(dateTime);
-        a.setSymptoms(request.getSymptoms());
-        a.setNotes(request.getNotes());
-        a.setStatus(AppointmentStatus.BOOKED);
+        try {
+            Appointment a = new Appointment();
+            a.setPatient(patient);
+            a.setDoctor(doctor);
+            a.setAppointmentDateTime(dt);
+            a.setSymptoms(request.getSymptoms());
+            a.setNotes(request.getNotes());
+            a.setStatus(AppointmentStatus.BOOKED);
 
-        return map(appointmentRepository.save(a));
+            return map(appointmentRepository.save(a));
+
+        } catch (DataIntegrityViolationException e) {
+            // This catches race condition: another booking inserted same (doctor_id,
+            // datetime)
+            throw new ConflictException("This slot is already booked for the doctor");
+        }
     }
 
     @Override
     public List<AppointmentResponse> getAll() {
-        return appointmentRepository.findAll()
-                .stream()
-                .map(this::map)
-                .collect(Collectors.toList());
+        return appointmentRepository.findAll().stream().map(this::map).collect(Collectors.toList());
     }
 
     @Override
     public List<AppointmentResponse> getByPatient(Long patientId) {
-        return appointmentRepository.findByPatientId(patientId)
-                .stream()
-                .map(this::map)
-                .collect(Collectors.toList());
+        return appointmentRepository.findByPatientId(patientId).stream().map(this::map).collect(Collectors.toList());
     }
 
     @Override
     public List<AppointmentResponse> getByDoctor(Long doctorId) {
-        return appointmentRepository.findByDoctorId(doctorId)
-                .stream()
-                .map(this::map)
-                .collect(Collectors.toList());
+        return appointmentRepository.findByDoctorId(doctorId).stream().map(this::map).collect(Collectors.toList());
     }
 
     @Override
+    @Transactional
     public AppointmentResponse updateStatus(Long appointmentId, AppointmentStatusUpdateRequest request) {
         Appointment a = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment not found"));
@@ -102,31 +111,33 @@ public class AppointmentServiceImpl implements AppointmentService {
         return map(appointmentRepository.save(a));
     }
 
+    /**
+     * Safe reschedule = Cancel old appointment + Book new slot
+     * (History preserved because old remains CANCELLED)
+     */
     @Override
+    @Transactional
     public AppointmentResponse reschedule(Long appointmentId, AppointmentRequest request) {
-        Appointment a = appointmentRepository.findById(appointmentId)
+        Appointment old = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment not found"));
 
-        LocalDateTime newDateTime = LocalDateTime.parse(request.getAppointmentDateTime());
+        // Cancel old first (history preserved)
+        old.setStatus(AppointmentStatus.CANCELLED);
+        appointmentRepository.save(old);
 
-        boolean alreadyBooked = appointmentRepository.existsByDoctorIdAndAppointmentDateTimeAndStatusIn(
-                a.getDoctor().getId(),
-                newDateTime,
-                Arrays.asList(AppointmentStatus.BOOKED, AppointmentStatus.CONFIRMED));
+        // Book new with same patient & doctor
+        AppointmentRequest newReq = new AppointmentRequest();
+        newReq.setPatientId(old.getPatient().getId());
+        newReq.setDoctorId(old.getDoctor().getId());
+        newReq.setAppointmentDateTime(request.getAppointmentDateTime());
+        newReq.setSymptoms(request.getSymptoms());
+        newReq.setNotes(request.getNotes());
 
-        if (alreadyBooked) {
-            throw new ConflictException("Selected reschedule slot is already booked");
-        }
-
-        a.setAppointmentDateTime(newDateTime);
-        a.setSymptoms(request.getSymptoms());
-        a.setNotes(request.getNotes());
-        a.setStatus(AppointmentStatus.BOOKED);
-
-        return map(appointmentRepository.save(a));
+        return book(newReq);
     }
 
     @Override
+    @Transactional
     public AppointmentResponse cancel(Long appointmentId) {
         Appointment a = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment not found"));
@@ -151,21 +162,13 @@ public class AppointmentServiceImpl implements AppointmentService {
                 ? null
                 : AppointmentStatus.valueOf(status.toUpperCase());
 
-        LocalDateTime fromDt = (from == null || from.isBlank())
-                ? null
-                : LocalDateTime.parse(from);
-
-        LocalDateTime toDt = (to == null || to.isBlank())
-                ? null
-                : LocalDateTime.parse(to);
+        LocalDateTime fromDt = (from == null || from.isBlank()) ? null : LocalDateTime.parse(from);
+        LocalDateTime toDt = (to == null || to.isBlank()) ? null : LocalDateTime.parse(to);
 
         Page<Appointment> result = appointmentRepository.searchAppointments(
                 doctorId, patientId, st, fromDt, toDt, pageable);
 
-        List<AppointmentResponse> content = result.getContent()
-                .stream()
-                .map(this::map)
-                .collect(Collectors.toList());
+        List<AppointmentResponse> content = result.getContent().stream().map(this::map).collect(Collectors.toList());
 
         return new PageResponse<>(
                 content,

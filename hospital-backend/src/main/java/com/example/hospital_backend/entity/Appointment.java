@@ -6,7 +6,9 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "appointments")
+@Table(name = "appointments", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_doctor_datetime", columnNames = { "doctor_id", "appointment_date_time" })
+})
 public class Appointment {
 
     @Id
@@ -21,17 +23,17 @@ public class Appointment {
     @JoinColumn(name = "doctor_id", nullable = false)
     private Doctor doctor;
 
-    @Column(nullable = false)
+    @Column(name = "appointment_date_time", nullable = false)
     private LocalDateTime appointmentDateTime;
 
     @Enumerated(EnumType.STRING)
     private AppointmentStatus status;
 
     private String symptoms;
-
     private String notes;
 
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public Appointment() {
     }
@@ -39,9 +41,15 @@ public class Appointment {
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
         if (this.status == null) {
             this.status = AppointmentStatus.BOOKED;
         }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 
     public Long getId() {
@@ -76,6 +84,10 @@ public class Appointment {
         return createdAt;
     }
 
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -106,5 +118,9 @@ public class Appointment {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }
