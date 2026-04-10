@@ -1,11 +1,8 @@
-package com.example.hospital_backend.dto.request;
+package com.example.hospital_backend.dto.response;
 
-import jakarta.validation.constraints.NotNull;
-
-public class PatientProfileRequest {
-
-    @NotNull(message = "userId is required")
-    private Long userId;
+public class PatientResponse {
+    private Long id;
+    private UserSummaryResponse user;
 
     private String bloodGroup;
     private String allergies;
@@ -15,11 +12,15 @@ public class PatientProfileRequest {
     private String insuranceProvider;
     private String insuranceNumber;
 
-    public PatientProfileRequest() {
+    public PatientResponse() {
     }
 
-    public Long getUserId() {
-        return userId;
+    public Long getId() {
+        return id;
+    }
+
+    public UserSummaryResponse getUser() {
+        return user;
     }
 
     public String getBloodGroup() {
@@ -50,8 +51,12 @@ public class PatientProfileRequest {
         return insuranceNumber;
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setUser(UserSummaryResponse user) {
+        this.user = user;
     }
 
     public void setBloodGroup(String bloodGroup) {
