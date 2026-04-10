@@ -1,0 +1,36 @@
+package com.example.hospital_backend.service;
+
+import com.example.hospital_backend.dto.request.AppointmentRequest;
+import com.example.hospital_backend.dto.request.AppointmentStatusUpdateRequest;
+import com.example.hospital_backend.dto.response.AppointmentResponse;
+import com.example.hospital_backend.dto.response.PageResponse;
+
+import java.util.List;
+
+public interface AppointmentService {
+
+    AppointmentResponse book(AppointmentRequest request);
+
+    List<AppointmentResponse> getAll();
+
+    List<AppointmentResponse> getByPatient(Long patientId);
+
+    List<AppointmentResponse> getByDoctor(Long doctorId);
+
+    AppointmentResponse updateStatus(Long appointmentId, AppointmentStatusUpdateRequest request);
+
+    AppointmentResponse reschedule(Long appointmentId, AppointmentRequest request);
+
+    AppointmentResponse cancel(Long appointmentId);
+
+    PageResponse<AppointmentResponse> searchPaged(
+            Long doctorId,
+            Long patientId,
+            String status,
+            String from,
+            String to,
+            int page,
+            int size,
+            String sortBy,
+            String direction);
+}

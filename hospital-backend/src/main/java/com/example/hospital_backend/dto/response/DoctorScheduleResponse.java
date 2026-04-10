@@ -1,28 +1,19 @@
-package com.example.hospital_backend.dto.request;
+package com.example.hospital_backend.dto.response;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-
-public class DoctorScheduleRequest {
-
-    @NotNull(message = "doctorId is required")
+public class DoctorScheduleResponse {
+    private Long id;
     private Long doctorId;
-
-    @NotBlank(message = "dayOfWeek is required")
-    private String dayOfWeek; // MONDAY...
-
-    @NotBlank(message = "startTime is required")
-    private String startTime; // 10:00
-
-    @NotBlank(message = "endTime is required")
-    private String endTime; // 13:00
-
-    @NotNull(message = "slotDurationMinutes is required")
+    private String dayOfWeek;
+    private String startTime;
+    private String endTime;
     private Integer slotDurationMinutes;
-
     private Boolean available;
 
-    public DoctorScheduleRequest() {
+    public DoctorScheduleResponse() {
+    }
+
+    public Long getId() {
+        return id;
     }
 
     public Long getDoctorId() {
@@ -47,6 +38,10 @@ public class DoctorScheduleRequest {
 
     public Boolean getAvailable() {
         return available;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public void setDoctorId(Long doctorId) {
