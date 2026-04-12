@@ -43,12 +43,23 @@ public class SecurityConfig {
                         // Public auth
                         .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login").permitAll()
 
-                        // Public doctor browse + slot view (patient can see doctors/slots without
-                        // login)
+                        // Public test endpoint (email test)
+                        .requestMatchers("/api/v1/test/**").permitAll()
+
+                        // Swagger public
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html")
+                        .permitAll()
+
+                        .requestMatchers("/error").permitAll()
+
+                        // Public doctor browse + slot view
                         .requestMatchers("/api/v1/doctors", "/api/v1/doctors/**").permitAll()
                         .requestMatchers("/api/v1/doctor-schedules/doctor/**/slots").permitAll()
 
-                        // Everything else must be authenticated
+                        // Everything else needs login
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(hb -> hb.disable())

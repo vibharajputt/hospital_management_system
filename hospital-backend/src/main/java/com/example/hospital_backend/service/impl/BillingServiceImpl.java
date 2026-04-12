@@ -4,6 +4,7 @@ import com.example.hospital_backend.dto.request.BillingCreateRequest;
 import com.example.hospital_backend.dto.request.BillingPayRequest;
 import com.example.hospital_backend.dto.response.BillingResponse;
 import com.example.hospital_backend.entity.*;
+import com.example.hospital_backend.enums.NotificationType;
 import com.example.hospital_backend.enums.PaymentMode;
 import com.example.hospital_backend.enums.PaymentStatus;
 import com.example.hospital_backend.exception.ConflictException;
@@ -11,6 +12,8 @@ import com.example.hospital_backend.exception.ForbiddenException;
 import com.example.hospital_backend.exception.ResourceNotFoundException;
 import com.example.hospital_backend.repository.*;
 import com.example.hospital_backend.service.BillingService;
+import com.example.hospital_backend.service.EmailService;
+import com.example.hospital_backend.service.NotificationService;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,16 +31,23 @@ public class BillingServiceImpl implements BillingService {
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
 
+    private final NotificationService notificationService;
+    private final EmailService emailService;
+
     public BillingServiceImpl(BillingRepository billingRepository,
             AppointmentRepository appointmentRepository,
             UserRepository userRepository,
             PatientRepository patientRepository,
-            DoctorRepository doctorRepository) {
+            DoctorRepository doctorRepository,
+            NotificationService notificationService,
+            EmailService emailService) {
         this.billingRepository = billingRepository;
         this.appointmentRepository = appointmentRepository;
         this.userRepository = userRepository;
         this.patientRepository = patientRepository;
         this.doctorRepository = doctorRepository;
+        this.notificationService = notificationService;
+        this.emailService = emailService;
     }
 
     private String currentEmail() {
@@ -61,10 +71,23 @@ public class BillingServiceImpl implements BillingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Doctor profile not found"));
     }
 
+    private void notifyAndEmail(Long userId, NotificationType type, String title, String message) {
+        try {
+            notificationService.create(userId, type, title, message);
+        } catch (Exception ignored) {
+        }
+        try {
+            User user = userRepository.findById(userId).orElse(null);
+            if (user != null && user.getEmail() != null) {
+                emailService.sendEmail(user.getEmail(), title, message);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     @Override
     @Transactional
     public BillingResponse createBill(BillingCreateRequest request) {
-        // Only ADMIN/STAFF should call this (controller will secure)
         Appointment appt = appointmentRepository.findById(request.getAppointmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Appointment not found"));
 
@@ -84,7 +107,14 @@ public class BillingServiceImpl implements BillingService {
         b.setAmount(amount);
         b.setStatus(PaymentStatus.PENDING);
 
-        return map(billingRepository.save(b));
+        Billing saved = billingRepository.save(b);
+
+        // Notify patient
+        notifyAndEmail(saved.getPatient().getUser().getId(), NotificationType.BILLING,
+                "New Bill Generated",
+                "A bill of amount ₹" + saved.getAmount() + " is generated. Invoice: " + saved.getInvoiceNumber());
+
+        return map(saved);
     }
 
     @Override
@@ -116,7 +146,6 @@ public class BillingServiceImpl implements BillingService {
         Billing b = billingRepository.findById(billingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Bill not found"));
 
-        // Only patient owner can pay
         Patient me = currentPatient();
         if (!b.getPatient().getId().equals(me.getId())) {
             throw new ForbiddenException("You cannot pay someone else's bill");
@@ -127,12 +156,23 @@ public class BillingServiceImpl implements BillingService {
         }
 
         PaymentMode mode = PaymentMode.valueOf(request.getPaymentMode().toUpperCase());
-
         b.setPaymentMode(mode);
         b.setStatus(PaymentStatus.PAID);
         b.setPaidAt(LocalDateTime.now());
 
-        return map(billingRepository.save(b));
+        Billing saved = billingRepository.save(b);
+
+        // Notify patient + doctor
+        notifyAndEmail(saved.getPatient().getUser().getId(), NotificationType.BILLING,
+                "Payment Successful",
+                "Your payment for invoice " + saved.getInvoiceNumber() + " is successful. Mode: " + mode.name());
+
+        notifyAndEmail(saved.getDoctor().getUser().getId(), NotificationType.BILLING,
+                "Bill Paid",
+                "Bill paid by " + saved.getPatient().getUser().getFullName() + ". Invoice: "
+                        + saved.getInvoiceNumber());
+
+        return map(saved);
     }
 
     private void authorize(Billing b) {
@@ -175,7 +215,6 @@ public class BillingServiceImpl implements BillingService {
 
         r.setPaidAt(b.getPaidAt() != null ? b.getPaidAt().toString() : null);
         r.setCreatedAt(b.getCreatedAt() != null ? b.getCreatedAt().toString() : null);
-
         return r;
     }
 }

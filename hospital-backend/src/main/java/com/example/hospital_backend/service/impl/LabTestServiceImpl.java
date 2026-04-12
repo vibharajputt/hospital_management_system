@@ -4,11 +4,14 @@ import com.example.hospital_backend.dto.request.LabTestOrderRequest;
 import com.example.hospital_backend.dto.response.LabTestResponse;
 import com.example.hospital_backend.entity.*;
 import com.example.hospital_backend.enums.LabTestStatus;
+import com.example.hospital_backend.enums.NotificationType;
 import com.example.hospital_backend.exception.ForbiddenException;
 import com.example.hospital_backend.exception.ResourceNotFoundException;
 import com.example.hospital_backend.repository.*;
+import com.example.hospital_backend.service.EmailService;
 import com.example.hospital_backend.service.FileStorageService;
 import com.example.hospital_backend.service.LabTestService;
+import com.example.hospital_backend.service.NotificationService;
 import org.springframework.core.io.Resource;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -28,18 +31,25 @@ public class LabTestServiceImpl implements LabTestService {
     private final PatientRepository patientRepository;
     private final FileStorageService fileStorageService;
 
+    private final NotificationService notificationService;
+    private final EmailService emailService;
+
     public LabTestServiceImpl(LabTestRepository labTestRepository,
             AppointmentRepository appointmentRepository,
             UserRepository userRepository,
             DoctorRepository doctorRepository,
             PatientRepository patientRepository,
-            FileStorageService fileStorageService) {
+            FileStorageService fileStorageService,
+            NotificationService notificationService,
+            EmailService emailService) {
         this.labTestRepository = labTestRepository;
         this.appointmentRepository = appointmentRepository;
         this.userRepository = userRepository;
         this.doctorRepository = doctorRepository;
         this.patientRepository = patientRepository;
         this.fileStorageService = fileStorageService;
+        this.notificationService = notificationService;
+        this.emailService = emailService;
     }
 
     private String currentEmail() {
@@ -61,6 +71,20 @@ public class LabTestServiceImpl implements LabTestService {
         User u = currentUser();
         return patientRepository.findByUserId(u.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found"));
+    }
+
+    private void notifyAndEmail(Long userId, NotificationType type, String title, String message) {
+        try {
+            notificationService.create(userId, type, title, message);
+        } catch (Exception ignored) {
+        }
+        try {
+            User user = userRepository.findById(userId).orElse(null);
+            if (user != null && user.getEmail() != null) {
+                emailService.sendEmail(user.getEmail(), title, message);
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     @Override
@@ -87,7 +111,14 @@ public class LabTestServiceImpl implements LabTestService {
         test.setInstructions(request.getInstructions());
         test.setStatus(LabTestStatus.ORDERED);
 
-        return map(labTestRepository.save(test));
+        LabTest saved = labTestRepository.save(test);
+
+        // notify patient
+        notifyAndEmail(saved.getPatient().getUser().getId(), NotificationType.LAB,
+                "Lab Test Ordered",
+                "A lab test (" + saved.getTestName() + ") has been ordered for your appointment.");
+
+        return map(saved);
     }
 
     @Override
@@ -124,7 +155,16 @@ public class LabTestServiceImpl implements LabTestService {
             test.setReportFilePath(path);
         }
 
-        return map(labTestRepository.save(test));
+        LabTest saved = labTestRepository.save(test);
+
+        // notify patient when completed
+        if (saved.getStatus() == LabTestStatus.COMPLETED) {
+            notifyAndEmail(saved.getPatient().getUser().getId(), NotificationType.LAB,
+                    "Lab Report Ready",
+                    "Your lab report for test (" + saved.getTestName() + ") is ready. You can view/download it.");
+        }
+
+        return map(saved);
     }
 
     @Override
