@@ -13,6 +13,7 @@ import com.example.hospital_backend.service.DoctorService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -48,15 +49,15 @@ public class DoctorServiceImpl implements DoctorService {
         doctor.setHospitalName(request.getHospitalName());
         doctor.setDepartment(request.getDepartment());
 
+        // default: NOT approved
+        doctor.setApproved(false);
+
         return mapDoctor(doctorRepository.save(doctor));
     }
 
     @Override
     public List<DoctorResponse> getAllDoctors() {
-        return doctorRepository.findAll()
-                .stream()
-                .map(this::mapDoctor)
-                .collect(Collectors.toList());
+        return doctorRepository.findAll().stream().map(this::mapDoctor).collect(Collectors.toList());
     }
 
     @Override
@@ -69,16 +70,13 @@ public class DoctorServiceImpl implements DoctorService {
     @Override
     public List<DoctorResponse> searchBySpecialization(String specialization) {
         return doctorRepository.findBySpecializationContainingIgnoreCase(specialization)
-                .stream()
-                .map(this::mapDoctor)
-                .collect(Collectors.toList());
+                .stream().map(this::mapDoctor).collect(Collectors.toList());
     }
 
     @Override
     public PageResponse<DoctorResponse> searchPaged(String specialization, String department,
             Double minFee, Double maxFee,
-            int page, int size,
-            String sortBy, String direction) {
+            int page, int size, String sortBy, String direction) {
 
         Sort sort = "desc".equalsIgnoreCase(direction)
                 ? Sort.by(sortBy).descending()
@@ -91,10 +89,7 @@ public class DoctorServiceImpl implements DoctorService {
 
         Page<Doctor> result = doctorRepository.searchDoctors(spec, dept, minFee, maxFee, pageable);
 
-        List<DoctorResponse> content = result.getContent()
-                .stream()
-                .map(this::mapDoctor)
-                .collect(Collectors.toList());
+        List<DoctorResponse> content = result.getContent().stream().map(this::mapDoctor).collect(Collectors.toList());
 
         return new PageResponse<>(
                 content,
@@ -103,6 +98,24 @@ public class DoctorServiceImpl implements DoctorService {
                 result.getTotalElements(),
                 result.getTotalPages(),
                 result.isLast());
+    }
+
+    @Override
+    public DoctorResponse approveDoctor(Long doctorId) {
+        Doctor doctor = doctorRepository.findById(doctorId)
+                .orElseThrow(() -> new ResourceNotFoundException("Doctor not found"));
+        doctor.setApproved(true);
+        return mapDoctor(doctorRepository.save(doctor));
+    }
+
+    @Override
+    public DoctorResponse getMyDoctorProfile() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        Doctor doctor = doctorRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Doctor profile not found"));
+        return mapDoctor(doctor);
     }
 
     private DoctorResponse mapDoctor(Doctor d) {
@@ -123,6 +136,7 @@ public class DoctorServiceImpl implements DoctorService {
         r.setConsultationFee(d.getConsultationFee());
         r.setHospitalName(d.getHospitalName());
         r.setDepartment(d.getDepartment());
+        r.setApproved(d.getApproved());
 
         return r;
     }

@@ -6,11 +6,13 @@ import com.example.hospital_backend.entity.Appointment;
 import com.example.hospital_backend.entity.Doctor;
 import com.example.hospital_backend.entity.DoctorSchedule;
 import com.example.hospital_backend.enums.AppointmentStatus;
+import com.example.hospital_backend.exception.ForbiddenException;
 import com.example.hospital_backend.exception.ResourceNotFoundException;
 import com.example.hospital_backend.repository.AppointmentRepository;
 import com.example.hospital_backend.repository.DoctorRepository;
 import com.example.hospital_backend.repository.DoctorScheduleRepository;
 import com.example.hospital_backend.service.DoctorScheduleService;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -39,6 +41,10 @@ public class DoctorScheduleServiceImpl implements DoctorScheduleService {
         Doctor doctor = doctorRepository.findById(request.getDoctorId())
                 .orElseThrow(() -> new ResourceNotFoundException("Doctor not found"));
 
+        if (!Boolean.TRUE.equals(doctor.getApproved())) {
+            throw new ForbiddenException("Doctor is not approved by admin");
+        }
+
         DoctorSchedule s = new DoctorSchedule();
         s.setDoctor(doctor);
         s.setDayOfWeek(request.getDayOfWeek().toUpperCase());
@@ -63,7 +69,6 @@ public class DoctorScheduleServiceImpl implements DoctorScheduleService {
         List<DoctorSchedule> schedules = scheduleRepository.findByDoctorIdAndDayOfWeekAndAvailableTrue(doctorId,
                 dayOfWeek);
 
-        // 1) Generate all slots from schedule
         List<String> allSlots = new ArrayList<>();
         for (DoctorSchedule schedule : schedules) {
             LocalTime current = schedule.getStartTime();
@@ -73,7 +78,6 @@ public class DoctorScheduleServiceImpl implements DoctorScheduleService {
             }
         }
 
-        // 2) Remove booked slots from appointments
         LocalDateTime startOfDay = localDate.atStartOfDay();
         LocalDateTime endOfDay = localDate.atTime(23, 59, 59);
 

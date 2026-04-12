@@ -12,6 +12,8 @@ public class DoctorResponse {
     private String hospitalName;
     private String department;
 
+    private Boolean approved;
+
     public DoctorResponse() {
     }
 
@@ -51,6 +53,10 @@ public class DoctorResponse {
         return department;
     }
 
+    public Boolean getApproved() {
+        return approved;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -85,5 +91,9 @@ public class DoctorResponse {
 
     public void setDepartment(String department) {
         this.department = department;
+    }
+
+    public void setApproved(Boolean approved) {
+        this.approved = approved;
     }
 }

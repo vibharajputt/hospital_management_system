@@ -5,6 +5,7 @@ import com.example.hospital_backend.dto.response.DoctorResponse;
 import com.example.hospital_backend.dto.response.PageResponse;
 import com.example.hospital_backend.service.DoctorService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,11 +21,14 @@ public class DoctorController {
         this.doctorService = doctorService;
     }
 
+    // Only logged-in DOCTOR can create their profile (admin also allowed)
+    @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @PostMapping("/profile")
     public ResponseEntity<DoctorResponse> createDoctorProfile(@RequestBody DoctorProfileRequest request) {
         return ResponseEntity.ok(doctorService.createDoctorProfile(request));
     }
 
+    // public browse
     @GetMapping
     public ResponseEntity<List<DoctorResponse>> getAllDoctors() {
         return ResponseEntity.ok(doctorService.getAllDoctors());
@@ -52,5 +56,19 @@ public class DoctorController {
             @RequestParam(defaultValue = "asc") String direction) {
         return ResponseEntity.ok(
                 doctorService.searchPaged(specialization, department, minFee, maxFee, page, size, sortBy, direction));
+    }
+
+    // doctor can view own profile
+    @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
+    @GetMapping("/me")
+    public ResponseEntity<DoctorResponse> myDoctorProfile() {
+        return ResponseEntity.ok(doctorService.getMyDoctorProfile());
+    }
+
+    // Admin approves doctor
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{doctorId}/approve")
+    public ResponseEntity<DoctorResponse> approve(@PathVariable Long doctorId) {
+        return ResponseEntity.ok(doctorService.approveDoctor(doctorId));
     }
 }

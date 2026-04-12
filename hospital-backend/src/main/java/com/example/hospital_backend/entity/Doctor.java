@@ -22,6 +22,10 @@ public class Doctor {
     private String hospitalName;
     private String department;
 
+    // Admin approval
+    @Column(nullable = false)
+    private Boolean approved = false;
+
     public Doctor() {
     }
 
@@ -61,6 +65,10 @@ public class Doctor {
         return department;
     }
 
+    public Boolean getApproved() {
+        return approved;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -95,5 +103,9 @@ public class Doctor {
 
     public void setDepartment(String department) {
         this.department = department;
+    }
+
+    public void setApproved(Boolean approved) {
+        this.approved = approved;
     }
 }

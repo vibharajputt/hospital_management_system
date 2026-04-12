@@ -2,6 +2,7 @@ package com.example.hospital_backend.controller;
 
 import com.example.hospital_backend.dto.request.AppointmentRequest;
 import com.example.hospital_backend.dto.request.AppointmentStatusUpdateRequest;
+import com.example.hospital_backend.dto.request.BookAppointmentRequest;
 import com.example.hospital_backend.dto.response.AppointmentResponse;
 import com.example.hospital_backend.dto.response.PageResponse;
 import com.example.hospital_backend.service.AppointmentService;
@@ -23,7 +24,15 @@ public class AppointmentController {
         this.appointmentService = appointmentService;
     }
 
+    // Patient books for SELF
     @PreAuthorize("hasRole('PATIENT') or hasRole('ADMIN')")
+    @PostMapping("/book")
+    public ResponseEntity<AppointmentResponse> bookSelf(@Valid @RequestBody BookAppointmentRequest request) {
+        return ResponseEntity.ok(appointmentService.bookSelf(request));
+    }
+
+    // Keep old admin booking
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<AppointmentResponse> book(@Valid @RequestBody AppointmentRequest request) {
         return ResponseEntity.ok(appointmentService.book(request));
@@ -35,25 +44,29 @@ public class AppointmentController {
         return ResponseEntity.ok(appointmentService.getAll());
     }
 
+    // Patient sees own appointments
     @PreAuthorize("hasRole('PATIENT') or hasRole('ADMIN')")
-    @GetMapping("/patient/{patientId}")
-    public ResponseEntity<List<AppointmentResponse>> byPatient(@PathVariable Long patientId) {
-        return ResponseEntity.ok(appointmentService.getByPatient(patientId));
+    @GetMapping("/my")
+    public ResponseEntity<List<AppointmentResponse>> myPatientAppointments() {
+        return ResponseEntity.ok(appointmentService.getMyPatientAppointments());
     }
 
+    // Doctor sees own appointments
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
-    @GetMapping("/doctor/{doctorId}")
-    public ResponseEntity<List<AppointmentResponse>> byDoctor(@PathVariable Long doctorId) {
-        return ResponseEntity.ok(appointmentService.getByDoctor(doctorId));
+    @GetMapping("/doctor/my")
+    public ResponseEntity<List<AppointmentResponse>> myDoctorAppointments() {
+        return ResponseEntity.ok(appointmentService.getMyDoctorAppointments());
     }
 
+    // Doctor updates status for OWN appointment (approved doctor only)
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @PutMapping("/{appointmentId}/status")
-    public ResponseEntity<AppointmentResponse> status(@PathVariable Long appointmentId,
+    public ResponseEntity<AppointmentResponse> statusAsDoctor(@PathVariable Long appointmentId,
             @Valid @RequestBody AppointmentStatusUpdateRequest request) {
-        return ResponseEntity.ok(appointmentService.updateStatus(appointmentId, request));
+        return ResponseEntity.ok(appointmentService.updateStatusAsMyDoctor(appointmentId, request));
     }
 
+    // Patient reschedule/cancel own
     @PreAuthorize("hasRole('PATIENT') or hasRole('ADMIN')")
     @PutMapping("/{appointmentId}/reschedule")
     public ResponseEntity<AppointmentResponse> reschedule(@PathVariable Long appointmentId,

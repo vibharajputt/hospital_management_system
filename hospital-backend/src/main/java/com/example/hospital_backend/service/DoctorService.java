@@ -7,7 +7,6 @@ import com.example.hospital_backend.dto.response.PageResponse;
 import java.util.List;
 
 public interface DoctorService {
-
     DoctorResponse createDoctorProfile(DoctorProfileRequest request);
 
     List<DoctorResponse> getAllDoctors();
@@ -25,4 +24,8 @@ public interface DoctorService {
             int size,
             String sortBy,
             String direction);
+
+    DoctorResponse approveDoctor(Long doctorId);
+
+    DoctorResponse getMyDoctorProfile(); // current logged-in doctor
 }
