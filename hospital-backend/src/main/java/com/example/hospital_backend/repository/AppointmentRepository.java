@@ -14,39 +14,50 @@ import java.util.Optional;
 
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
-        List<Appointment> findByPatientId(Long patientId);
+  List<Appointment> findByPatientId(Long patientId);
 
-        List<Appointment> findByDoctorId(Long doctorId);
+  List<Appointment> findByDoctorId(Long doctorId);
 
-        Optional<Appointment> findByDoctorIdAndAppointmentDateTime(Long doctorId, LocalDateTime appointmentDateTime);
+  Optional<Appointment> findByDoctorIdAndAppointmentDateTime(Long doctorId, LocalDateTime appointmentDateTime);
 
-        boolean existsByDoctorIdAndAppointmentDateTimeAndStatusIn(
-                        Long doctorId,
-                        LocalDateTime appointmentDateTime,
-                        List<AppointmentStatus> statuses);
+  boolean existsByDoctorIdAndAppointmentDateTimeAndStatusIn(
+      Long doctorId,
+      LocalDateTime appointmentDateTime,
+      List<AppointmentStatus> statuses);
 
-        List<Appointment> findByDoctorIdAndAppointmentDateTimeBetweenAndStatusIn(
-                        Long doctorId,
-                        LocalDateTime start,
-                        LocalDateTime end,
-                        List<AppointmentStatus> statuses);
+  List<Appointment> findByDoctorIdAndAppointmentDateTimeBetweenAndStatusIn(
+      Long doctorId,
+      LocalDateTime start,
+      LocalDateTime end,
+      List<AppointmentStatus> statuses);
 
-        // NEW: doctor can view records only if has appointment with patient
-        boolean existsByDoctorIdAndPatientId(Long doctorId, Long patientId);
+  boolean existsByDoctorIdAndPatientId(Long doctorId, Long patientId);
 
-        @Query("""
-                            SELECT a FROM Appointment a
-                            WHERE (:doctorId IS NULL OR a.doctor.id = :doctorId)
-                              AND (:patientId IS NULL OR a.patient.id = :patientId)
-                              AND (:status IS NULL OR a.status = :status)
-                              AND (:fromDt IS NULL OR a.appointmentDateTime >= :fromDt)
-                              AND (:toDt IS NULL OR a.appointmentDateTime <= :toDt)
-                        """)
-        Page<Appointment> searchAppointments(
-                        @Param("doctorId") Long doctorId,
-                        @Param("patientId") Long patientId,
-                        @Param("status") AppointmentStatus status,
-                        @Param("fromDt") LocalDateTime fromDt,
-                        @Param("toDt") LocalDateTime toDt,
-                        Pageable pageable);
+  // Dashboard counts
+  long countByPatientId(Long patientId);
+
+  long countByPatientIdAndStatusInAndAppointmentDateTimeAfter(Long patientId, List<AppointmentStatus> statuses,
+      LocalDateTime after);
+
+  long countByDoctorIdAndStatusInAndAppointmentDateTimeAfter(Long doctorId, List<AppointmentStatus> statuses,
+      LocalDateTime after);
+
+  long countByDoctorIdAndStatusInAndAppointmentDateTimeBetween(Long doctorId, List<AppointmentStatus> statuses,
+      LocalDateTime start, LocalDateTime end);
+
+  @Query("""
+          SELECT a FROM Appointment a
+          WHERE (:doctorId IS NULL OR a.doctor.id = :doctorId)
+            AND (:patientId IS NULL OR a.patient.id = :patientId)
+            AND (:status IS NULL OR a.status = :status)
+            AND (:fromDt IS NULL OR a.appointmentDateTime >= :fromDt)
+            AND (:toDt IS NULL OR a.appointmentDateTime <= :toDt)
+      """)
+  Page<Appointment> searchAppointments(
+      @Param("doctorId") Long doctorId,
+      @Param("patientId") Long patientId,
+      @Param("status") AppointmentStatus status,
+      @Param("fromDt") LocalDateTime fromDt,
+      @Param("toDt") LocalDateTime toDt,
+      Pageable pageable);
 }
