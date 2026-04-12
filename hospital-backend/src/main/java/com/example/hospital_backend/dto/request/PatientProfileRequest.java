@@ -1,8 +1,12 @@
 package com.example.hospital_backend.dto.request;
 
+import jakarta.validation.constraints.NotNull;
+
 public class PatientProfileRequest {
 
+    @NotNull(message = "userId is required")
     private Long userId;
+
     private String bloodGroup;
     private String allergies;
     private String chronicConditions;

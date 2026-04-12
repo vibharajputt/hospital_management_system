@@ -17,11 +17,30 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final CustomUserDetailsService customUserDetailsService;
+    private final CustomUserDetailsService userDetailsService;
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil, CustomUserDetailsService customUserDetailsService) {
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, CustomUserDetailsService userDetailsService) {
         this.jwtUtil = jwtUtil;
-        this.customUserDetailsService = customUserDetailsService;
+        this.userDetailsService = userDetailsService;
+    }
+
+    // Standard: Authorization: Bearer <token>
+    // DEV fallback: ?token=<jwt> (only if Bruno/header issue happens)
+    private String resolveToken(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7).trim();
+            if (!token.isBlank())
+                return token;
+        }
+
+        String tokenParam = request.getParameter("token");
+        if (tokenParam != null && !tokenParam.isBlank()) {
+            return tokenParam.trim();
+        }
+
+        return null;
     }
 
     @Override
@@ -29,38 +48,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
+        String token = resolveToken(request);
 
-        System.out.println("AUTH HEADER = " + authHeader);
+        if (token != null
+                && jwtUtil.validateToken(token)
+                && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        String token = authHeader.substring(7);
-        System.out.println("TOKEN = " + token);
-
-        try {
             String email = jwtUtil.extractUsername(token);
-            System.out.println("EMAIL FROM TOKEN = " + email);
+            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-            if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                    userDetails,
+                    null,
+                    userDetails.getAuthorities());
 
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities());
-
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-
-                System.out.println("AUTHENTICATION SET SUCCESSFULLY");
-            }
-
-        } catch (Exception e) {
-            System.out.println("JWT ERROR = " + e.getMessage());
+            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(auth);
         }
 
         filterChain.doFilter(request, response);

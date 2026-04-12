@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: hospital-mysql
+    environment:
+      MYSQL_DATABASE: hospital_db
+      MYSQL_ROOT_PASSWORD: rootpass
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpass" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+    container_name: hospital-backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: hospital_db
+      DB_USER: root
+      DB_PASSWORD: rootpass
+
+      APP_JWT_SECRET: ThisIsMyVerySecretKeyForJwtTokenGeneration123456
+      APP_JWT_EXPIRATION: 86400000
+      # Email (optional). If you want emails from docker too, set these:
+      # MAIL_USERNAME: yourgmail@gmail.com
+      # MAIL_PASSWORD: yourapppasswordwithoutspaces
+
+volumes:
+  mysql_data:

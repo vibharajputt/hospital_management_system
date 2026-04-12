@@ -32,6 +32,15 @@ public class PatientController {
     @GetMapping("/{userId}")
     public ResponseEntity<PatientResponse> getPatientProfile(@PathVariable Long userId) {
         return ResponseEntity.ok(patientService.getPatientProfileByUserId(userId));
+<<<<<<< HEAD
+=======
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping
+    public ResponseEntity<List<PatientResponse>> getAllPatients() {
+        return ResponseEntity.ok(patientService.getAllPatients());
+>>>>>>> c0dac223ccdeae0dd8781e2b7cc8c99a648085d5
     }
 
     @PreAuthorize("hasRole('ADMIN')")
