@@ -1,6 +1,7 @@
 package com.example.hospital_backend.dto.response;
 
 public class UserSummaryResponse {
+
     private Long id;
     private String fullName;
     private String email;
@@ -56,5 +57,5 @@ public class UserSummaryResponse {
 
     public void setRole(String role) {
         this.role = role;
-    }
-}
+    }<<<<<<<HEAD
+}=======}>>>>>>>c0dac223ccdeae0dd8781e2b7cc8c99a648085d5

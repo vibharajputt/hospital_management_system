@@ -2,7 +2,10 @@ package com.example.hospital_backend.controller;
 
 import com.example.hospital_backend.dto.request.AppointmentRequest;
 import com.example.hospital_backend.dto.request.AppointmentStatusUpdateRequest;
+<<<<<<< HEAD
+=======
 import com.example.hospital_backend.dto.request.BookAppointmentRequest;
+>>>>>>> c0dac223ccdeae0dd8781e2b7cc8c99a648085d5
 import com.example.hospital_backend.dto.response.AppointmentResponse;
 import com.example.hospital_backend.dto.response.PageResponse;
 import com.example.hospital_backend.service.AppointmentService;
@@ -24,6 +27,9 @@ public class AppointmentController {
         this.appointmentService = appointmentService;
     }
 
+<<<<<<< HEAD
+    @PreAuthorize("hasRole('PATIENT') or hasRole('ADMIN')")
+=======
     // Patient books for SELF
     @PreAuthorize("hasRole('PATIENT') or hasRole('ADMIN')")
     @PostMapping("/book")
@@ -33,6 +39,7 @@ public class AppointmentController {
 
     // Keep old admin booking
     @PreAuthorize("hasRole('ADMIN')")
+>>>>>>> c0dac223ccdeae0dd8781e2b7cc8c99a648085d5
     @PostMapping
     public ResponseEntity<AppointmentResponse> book(@Valid @RequestBody AppointmentRequest request) {
         return ResponseEntity.ok(appointmentService.book(request));
@@ -44,6 +51,27 @@ public class AppointmentController {
         return ResponseEntity.ok(appointmentService.getAll());
     }
 
+<<<<<<< HEAD
+    @PreAuthorize("hasRole('PATIENT') or hasRole('ADMIN')")
+    @GetMapping("/patient/{patientId}")
+    public ResponseEntity<List<AppointmentResponse>> byPatient(@PathVariable Long patientId) {
+        return ResponseEntity.ok(appointmentService.getByPatient(patientId));
+    }
+
+    @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
+    @GetMapping("/doctor/{doctorId}")
+    public ResponseEntity<List<AppointmentResponse>> byDoctor(@PathVariable Long doctorId) {
+        return ResponseEntity.ok(appointmentService.getByDoctor(doctorId));
+    }
+
+    @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
+    @PutMapping("/{appointmentId}/status")
+    public ResponseEntity<AppointmentResponse> status(@PathVariable Long appointmentId,
+            @Valid @RequestBody AppointmentStatusUpdateRequest request) {
+        return ResponseEntity.ok(appointmentService.updateStatus(appointmentId, request));
+    }
+
+=======
     // Patient sees own appointments
     @PreAuthorize("hasRole('PATIENT') or hasRole('ADMIN')")
     @GetMapping("/my")
@@ -67,6 +95,7 @@ public class AppointmentController {
     }
 
     // Patient reschedule/cancel own
+>>>>>>> c0dac223ccdeae0dd8781e2b7cc8c99a648085d5
     @PreAuthorize("hasRole('PATIENT') or hasRole('ADMIN')")
     @PutMapping("/{appointmentId}/reschedule")
     public ResponseEntity<AppointmentResponse> reschedule(@PathVariable Long appointmentId,
@@ -95,4 +124,8 @@ public class AppointmentController {
         return ResponseEntity.ok(
                 appointmentService.searchPaged(doctorId, patientId, status, from, to, page, size, sortBy, direction));
     }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> c0dac223ccdeae0dd8781e2b7cc8c99a648085d5
