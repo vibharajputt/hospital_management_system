@@ -6,6 +6,8 @@ import com.example.hospital_backend.entity.MedicalRecord;
 import com.example.hospital_backend.entity.Patient;
 import com.example.hospital_backend.entity.User;
 import com.example.hospital_backend.enums.MedicalRecordType;
+import com.example.hospital_backend.enums.Role;
+import com.example.hospital_backend.exception.BadRequestException;
 import com.example.hospital_backend.exception.ForbiddenException;
 import com.example.hospital_backend.exception.ResourceNotFoundException;
 import com.example.hospital_backend.repository.AppointmentRepository;
@@ -16,6 +18,7 @@ import com.example.hospital_backend.repository.UserRepository;
 import com.example.hospital_backend.service.FileStorageService;
 import com.example.hospital_backend.service.MedicalRecordService;
 import org.springframework.core.io.Resource;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -48,19 +51,37 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     }
 
     private String currentEmail() {
-        return SecurityContextHolder.getContext().getAuthentication().getName();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || auth.getName() == null
+                || "anonymousUser".equals(auth.getName())) {
+            throw new ForbiddenException("Unauthorized");
+        }
+        return auth.getName();
+    }
+
+    private User currentUser() {
+        return userRepository.findByEmail(currentEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     private Patient currentPatient() {
-        User u = userRepository.findByEmail(currentEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User u = currentUser();
+        if (u.getRole() != Role.PATIENT) {
+            throw new ForbiddenException("Only PATIENT can access this endpoint");
+        }
         return patientRepository.findByUserId(u.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found"));
+                .orElseGet(() -> {
+                    Patient p = new Patient();
+                    p.setUser(u);
+                    return patientRepository.save(p);
+                });
     }
 
     private Doctor currentDoctor() {
-        User u = userRepository.findByEmail(currentEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User u = currentUser();
+        if (u.getRole() != Role.DOCTOR) {
+            throw new ForbiddenException("Only DOCTOR can access this endpoint");
+        }
         return doctorRepository.findByUserId(u.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Doctor profile not found"));
     }
@@ -72,10 +93,17 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
 
         String relativePath = fileStorageService.store(file, "medical-records");
 
+        MedicalRecordType type;
+        try {
+            type = MedicalRecordType.valueOf(recordType.trim().toUpperCase());
+        } catch (Exception e) {
+            throw new BadRequestException("Invalid recordType: " + recordType);
+        }
+
         MedicalRecord record = new MedicalRecord();
         record.setPatient(patient);
         record.setDoctor(null);
-        record.setRecordType(MedicalRecordType.valueOf(recordType.toUpperCase()));
+        record.setRecordType(type);
         record.setTitle(title);
         record.setDescription(description);
         record.setFilePath(relativePath);
@@ -87,20 +115,34 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
     public List<MedicalRecordResponse> getMyRecords() {
         Patient patient = currentPatient();
         return medicalRecordRepository.findByPatientIdOrderByCreatedAtDesc(patient.getId())
-                .stream().map(this::map).collect(Collectors.toList());
+                .stream()
+                .map(this::map)
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<MedicalRecordResponse> getPatientRecordsForDoctor(Long patientId) {
-        Doctor doctor = currentDoctor();
+        User u = currentUser();
 
+        // ADMIN: can view any patient's records
+        if (u.getRole() == Role.ADMIN) {
+            return medicalRecordRepository.findByPatientIdOrderByCreatedAtDesc(patientId)
+                    .stream()
+                    .map(this::map)
+                    .collect(Collectors.toList());
+        }
+
+        // DOCTOR: must have appointment with patient
+        Doctor doctor = currentDoctor();
         boolean allowed = appointmentRepository.existsByDoctorIdAndPatientId(doctor.getId(), patientId);
         if (!allowed) {
             throw new ForbiddenException("You are not allowed to view this patient's records");
         }
 
         return medicalRecordRepository.findByPatientIdOrderByCreatedAtDesc(patientId)
-                .stream().map(this::map).collect(Collectors.toList());
+                .stream()
+                .map(this::map)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -108,31 +150,26 @@ public class MedicalRecordServiceImpl implements MedicalRecordService {
         MedicalRecord record = medicalRecordRepository.findById(recordId)
                 .orElseThrow(() -> new ResourceNotFoundException("Medical record not found"));
 
-        // Access rules:
-        // - Patient owner can download
-        // - Doctor can download only if has appointment with that patient
-        String email = currentEmail();
-        User u = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User u = currentUser();
 
-        if ("PATIENT".equals(u.getRole().name())) {
-            Patient p = patientRepository.findByUserId(u.getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found"));
+        if (u.getRole() == Role.PATIENT) {
+            Patient p = currentPatient();
             if (!record.getPatient().getId().equals(p.getId())) {
                 throw new ForbiddenException("You cannot download another patient's record");
             }
         }
 
-        if ("DOCTOR".equals(u.getRole().name())) {
+        if (u.getRole() == Role.DOCTOR) {
             Doctor d = doctorRepository.findByUserId(u.getId())
                     .orElseThrow(() -> new ResourceNotFoundException("Doctor profile not found"));
-            boolean allowed = appointmentRepository.existsByDoctorIdAndPatientId(d.getId(),
-                    record.getPatient().getId());
-            if (!allowed)
+            boolean allowed = appointmentRepository.existsByDoctorIdAndPatientId(
+                    d.getId(), record.getPatient().getId());
+            if (!allowed) {
                 throw new ForbiddenException("You are not allowed to download this record");
+            }
         }
 
-        // ADMIN allowed by default (no extra check)
+        // ADMIN allowed by default
         return fileStorageService.loadAsResource(record.getFilePath());
     }
 

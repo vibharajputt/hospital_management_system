@@ -14,7 +14,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/medical-records")
-@CrossOrigin(origins = "*")
 public class MedicalRecordController {
 
     private final MedicalRecordService medicalRecordService;
@@ -24,24 +23,27 @@ public class MedicalRecordController {
     }
 
     // PATIENT uploads own record
-    @PreAuthorize("hasRole('PATIENT') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('PATIENT')")
     @PostMapping("/upload")
     public ResponseEntity<MedicalRecordResponse> uploadMyRecord(
             @RequestParam("file") MultipartFile file,
             @RequestParam("recordType") @NotBlank String recordType,
             @RequestParam("title") @NotBlank String title,
             @RequestParam(value = "description", required = false) String description) {
-        return ResponseEntity.ok(medicalRecordService.uploadMyRecord(file, recordType, title, description));
+
+        return ResponseEntity.ok(
+                medicalRecordService.uploadMyRecord(file, recordType, title, description));
     }
 
     // PATIENT gets own records
-    @PreAuthorize("hasRole('PATIENT') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('PATIENT')")
     @GetMapping("/my")
     public ResponseEntity<List<MedicalRecordResponse>> myRecords() {
         return ResponseEntity.ok(medicalRecordService.getMyRecords());
     }
 
     // DOCTOR can view records only if has appointment with patient
+    // ADMIN can view any patient's records (handled in service)
     @PreAuthorize("hasRole('DOCTOR') or hasRole('ADMIN')")
     @GetMapping("/patient/{patientId}")
     public ResponseEntity<List<MedicalRecordResponse>> patientRecords(@PathVariable Long patientId) {

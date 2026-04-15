@@ -70,7 +70,11 @@ public class LabTestServiceImpl implements LabTestService {
     private Patient currentPatient() {
         User u = currentUser();
         return patientRepository.findByUserId(u.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found"));
+                .orElseGet(() -> {
+                    Patient p = new Patient();
+                    p.setUser(u);
+                    return patientRepository.save(p);
+                });
     }
 
     private void notifyAndEmail(Long userId, NotificationType type, String title, String message) {

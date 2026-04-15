@@ -1,16 +1,5 @@
-import { api, apiPrivate } from './axios';
+import api from "./axios";
 
-export const login = async (credentials) => {
-    const response = await api.post('/auth/login', credentials);
-    return response.data;
-};
-
-export const register = async (userData) => {
-    const response = await api.post('/auth/register', userData);
-    return response.data;
-};
-
-export const fetchMe = async () => {
-    const response = await apiPrivate.get('/auth/me');
-    return response.data;
-};
+export const registerUser = (payload) => api.post("/api/v1/auth/register", payload).then((r) => r.data);
+export const loginUser = (payload) => api.post("/api/v1/auth/login", payload).then((r) => r.data);
+export const me = () => api.get("/api/v1/auth/me").then((r) => r.data);

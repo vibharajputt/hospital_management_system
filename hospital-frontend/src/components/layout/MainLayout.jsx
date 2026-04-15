@@ -1,22 +1,12 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  HeartPulse, 
-  LayoutDashboard, 
-  Users, 
-  Calendar, 
-  FileText, 
-  Settings, 
-  LogOut,
-  Menu,
-  X,
-  Bell,
-  Search
+  HeartPulse, LayoutDashboard, Users, Calendar, FileText, Clock,
+  LogOut, Menu, X, Bell, Search, ChevronRight, Stethoscope
 } from 'lucide-react';
+import useAuthStore from '../../store/authStore';
 
-import { useAuthStore } from '../../store/authStore';
-
-export const MainLayout = () => {
+const MainLayout = () => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -27,35 +17,23 @@ export const MainLayout = () => {
     navigate('/login');
   };
 
-  // Base navigation based on roles
   const getNavItems = () => {
     const role = user?.role?.toUpperCase();
-    
-    const sharedItems = [
-      { label: 'Dashboard', icon: LayoutDashboard, path: `/dashboard/${role?.toLowerCase()}` },
-    ];
-
-    if (role === 'ADMIN') {
+    if (role === 'ADMIN' || role === 'STAFF') {
       return [
-        ...sharedItems,
-        { label: 'Doctors', icon: Users, path: '/dashboard/admin/doctors' },
-        { label: 'Patients', icon: Users, path: '/dashboard/admin/patients' },
-        { label: 'Appointments', icon: Calendar, path: '/dashboard/admin/appointments' },
-        { label: 'Settings', icon: Settings, path: '/dashboard/admin/settings' },
+        { label: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
       ];
     } else if (role === 'DOCTOR') {
       return [
-        ...sharedItems,
-        { label: 'My Appointments', icon: Calendar, path: '/dashboard/doctor/appointments' },
-        { label: 'Patients', icon: Users, path: '/dashboard/doctor/patients' },
-        { label: 'Prescriptions', icon: FileText, path: '/dashboard/doctor/prescriptions' },
+        { label: 'Dashboard', icon: LayoutDashboard, path: '/doctor/dashboard' },
+        { label: 'Appointments', icon: Calendar, path: '/doctor/appointments' },
+        { label: 'Schedule', icon: Clock, path: '/doctor/schedule' },
       ];
     } else {
-      // PATIENT
       return [
-        ...sharedItems,
-        { label: 'My Appointments', icon: Calendar, path: '/dashboard/patient/appointments' },
-        { label: 'Medical Records', icon: FileText, path: '/dashboard/patient/records' },
+        { label: 'Dashboard', icon: LayoutDashboard, path: '/patient/dashboard' },
+        { label: 'Find Doctors', icon: Stethoscope, path: '/patient/doctors' },
+        { label: 'My Records', icon: FileText, path: '/patient/history' },
       ];
     }
   };
@@ -65,123 +43,118 @@ export const MainLayout = () => {
   return (
     <div className="flex min-h-screen bg-gray-50 overflow-hidden font-sans">
       
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile Overlay */}
       {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
-      <aside 
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-72 glass-panel transition-transform duration-300 ease-in-out flex flex-col
-          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}
-      >
-        <div className="h-20 flex items-center px-8 border-b border-gray-100/50 mb-6">
-          <div className="w-10 h-10 bg-gradient-to-tr from-primary-600 to-secondary-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-500/20 mr-3">
-            <HeartPulse size={22} />
+      {/* Sidebar - Dark blue like reference */}
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-[#1e1b4b] to-[#312e81] text-white flex flex-col transition-transform duration-300
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        {/* Logo */}
+        <div className="h-20 flex items-center px-6 border-b border-white/10">
+          <div className="w-10 h-10 bg-gradient-to-tr from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg mr-3">
+            <HeartPulse size={22} className="text-white" />
           </div>
-          <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-900 to-primary-600">
-            CareSync
-          </h2>
-          <button 
-            className="ml-auto lg:hidden text-gray-500 hover:text-gray-800"
-            onClick={() => setSidebarOpen(false)}
-          >
+          <h2 className="text-xl font-bold tracking-tight">HealthMatrix</h2>
+          <button className="ml-auto lg:hidden text-white/70 hover:text-white" onClick={() => setSidebarOpen(false)}>
             <X size={24} />
           </button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
+        {/* Nav Items */}
+        <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
-            
             return (
               <NavLink
                 key={item.path}
                 to={item.path}
-                className={`flex items-center px-4 py-3.5 rounded-xl font-medium transition-all duration-200 group
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200
                   ${isActive 
-                    ? 'bg-primary-500 text-white shadow-md shadow-primary-500/20' 
-                    : 'text-gray-600 hover:bg-primary-50 hover:text-primary-700'
+                    ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' 
+                    : 'text-white/70 hover:bg-white/10 hover:text-white'
                   }
                 `}
               >
-                <item.icon 
-                  size={20} 
-                  className={`mr-3 transition-transform duration-200 ${isActive ? '' : 'group-hover:scale-110'}`} 
-                />
-                {item.label}
+                <item.icon size={20} />
+                <span>{item.label}</span>
+                {isActive && <ChevronRight size={16} className="ml-auto" />}
               </NavLink>
             );
           })}
         </nav>
 
-        <div className="p-4 mt-auto">
+        {/* User Info + Logout */}
+        <div className="p-4 border-t border-white/10">
+          <div className="flex items-center gap-3 px-3 py-2 mb-3">
+            <div className="w-9 h-9 rounded-full bg-amber-400 flex items-center justify-center text-indigo-900 font-bold text-sm">
+              {user?.fullName?.charAt(0) || 'U'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white truncate">{user?.fullName || 'User'}</p>
+              <p className="text-xs text-white/50 capitalize">{user?.role?.toLowerCase()}</p>
+            </div>
+          </div>
           <button 
             onClick={handleLogout}
-            className="flex items-center w-full px-4 py-3.5 text-red-600 hover:bg-red-50 rounded-xl font-medium transition-colors"
+            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-300 hover:bg-red-500/20 rounded-xl transition-colors"
           >
-            <LogOut size={20} className="mr-3" />
+            <LogOut size={18} />
             Sign Out
           </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
         
         {/* Header */}
-        <header className="h-20 glass-panel border-b-0 border-indigo-50/20 px-8 flex items-center justify-between z-10 sticky top-0">
-          <div className="flex items-center">
-            <button 
-              className="lg:hidden mr-4 text-gray-600 hover:text-primary-600"
-              onClick={() => setSidebarOpen(true)}
-            >
+        <header className="h-16 bg-white border-b border-gray-100 px-4 md:px-8 flex items-center justify-between z-10 sticky top-0 shadow-sm">
+          <div className="flex items-center gap-4">
+            <button className="lg:hidden text-gray-600 hover:text-primary-600" onClick={() => setSidebarOpen(true)}>
               <Menu size={24} />
             </button>
-            <div className="hidden md:flex relative text-gray-400 focus-within:text-primary-500 group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors" />
+            <div className="hidden md:flex relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input 
                 type="text" 
-                placeholder="Search anything..." 
-                className="bg-white/50 border border-gray-200 text-gray-900 text-sm rounded-full focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 block w-64 pl-10 p-2.5 transition-all shadow-sm"
+                placeholder="Search in app..." 
+                className="bg-gray-50 border border-gray-200 text-sm rounded-lg w-64 pl-9 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
               />
             </div>
           </div>
           
-          <div className="flex items-center space-x-6">
-            <button className="relative text-gray-500 hover:text-primary-600 transition-colors">
-              <Bell size={22} />
-              <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+          <div className="flex items-center gap-4">
+            <button className="relative text-gray-500 hover:text-primary-600 transition-colors p-2 hover:bg-gray-50 rounded-lg">
+              <Bell size={20} />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             </button>
-            
-            <div className="h-8 w-px bg-gray-200"></div>
-            
-            <div className="flex items-center space-x-3 cursor-pointer group">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">{user?.fullName || 'User Name'}</p>
-                <p className="text-xs text-gray-500 capitalize">{user?.role?.toLowerCase() || 'Role'}</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold border-2 border-white shadow-sm">
+            <div className="h-8 w-px bg-gray-200 hidden sm:block"></div>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-sm border-2 border-white shadow-sm">
                 {user?.fullName?.charAt(0) || 'U'}
+              </div>
+              <div className="hidden sm:block">
+                <p className="text-sm font-semibold text-gray-900">Welcome {user?.fullName?.split(' ')[0] || 'User'}</p>
+                <p className="text-xs text-gray-500 capitalize">{user?.role?.toLowerCase()}</p>
               </div>
             </div>
           </div>
         </header>
 
-        {/* Dynamic Page Content */}
-        <main className="flex-1 overflow-auto p-6 md:p-8 relative">
-          {/* subtle background pattern for content area */}
-          <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] opacity-30 pointer-events-none"></div>
-          
-          <div className="relative z-10 animate-fade-in max-w-7xl mx-auto">
-             <Outlet />
+        {/* Page Content */}
+        <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 bg-gray-50">
+          <div className="max-w-7xl mx-auto animate-fade-in">
+            <Outlet />
           </div>
         </main>
       </div>
     </div>
   );
 };
+
+export { MainLayout };
+export default MainLayout;

@@ -1,44 +1,25 @@
-import axios from 'axios';
-import { useAuthStore } from '../store/authStore'; // We will create this next
+import axios from "axios";
 
-const BASE_URL = 'http://localhost:8080/api/v1';
-
-export const api = axios.create({
-    baseURL: BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
+const api = axios.create({
+    baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080",
+    withCredentials: false,
 });
 
-export const apiPrivate = axios.create({
-    baseURL: BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem("token");
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
 });
 
-// Request interceptor to add token
-apiPrivate.interceptors.request.use(
-    (config) => {
-        const token = useAuthStore.getState().token;
-        if (token) {
-            config.headers['Authorization'] = `Bearer ${token}`;
+api.interceptors.response.use(
+    (res) => res,
+    (err) => {
+        if (err?.response?.status === 401) {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
         }
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
-
-// Response interceptor to handle 401 Unauthorized globally
-apiPrivate.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-        if (error.response?.status === 401) {
-            // Token expired or invalid
-            const logout = useAuthStore.getState().logout;
-            logout();
-            window.location.href = '/login';
-        }
-        return Promise.reject(error);
+        return Promise.reject(err);
     }
 );
+
+export default api;

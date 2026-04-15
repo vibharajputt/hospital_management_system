@@ -58,8 +58,12 @@ public class DashboardController {
         User u = userRepository.findByEmail(auth.getName())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        Patient p = patientRepository.findByUserId(u.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found"));
+        // Auto-create patient profile if missing
+        Patient p = patientRepository.findByUserId(u.getId()).orElseGet(() -> {
+            Patient newP = new Patient();
+            newP.setUser(u);
+            return patientRepository.save(newP);
+        });
 
         PatientDashboardResponse r = new PatientDashboardResponse();
         r.setPatientId(p.getId());

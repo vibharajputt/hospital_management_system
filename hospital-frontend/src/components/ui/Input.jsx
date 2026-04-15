@@ -15,15 +15,15 @@ export const Input = forwardRef(({
   const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
 
   return (
-    <div className={`w-full flex flex-col gap-1 ${className}`}>
+    <div className={`w-full flex flex-col gap-1.5 ${className}`}>
       {label && (
-        <label htmlFor={id} className="text-sm font-medium text-gray-700 ml-1">
+        <label htmlFor={id} className="text-sm font-semibold text-gray-700 ml-0.5">
           {label}
         </label>
       )}
       <div className="relative group">
         {Icon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 peer-focus:text-primary-500 transition-colors duration-300">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors duration-200">
             <Icon className="h-5 w-5" />
           </div>
         )}
@@ -31,12 +31,12 @@ export const Input = forwardRef(({
           ref={ref}
           id={id}
           type={inputType}
-          className={`peer w-full rounded-xl bg-white/50 backdrop-blur-sm border px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 shadow-sm
+          className={`w-full rounded-xl border bg-white px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 shadow-sm text-sm
             ${Icon ? 'pl-10' : ''}
             ${isPassword ? 'pr-10' : ''}
             ${error 
-              ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500 bg-red-50/50' 
-              : 'border-gray-200 focus:ring-primary-500/20 focus:border-primary-500 hover:border-primary-300'
+              ? 'border-red-300 focus:ring-red-200 bg-red-50/30' 
+              : 'border-gray-200 focus:ring-indigo-200 focus:border-indigo-500 hover:border-indigo-300'
             }
           `}
           {...props}
@@ -56,7 +56,7 @@ export const Input = forwardRef(({
         )}
       </div>
       {error && (
-        <span className="text-xs text-red-500 ml-1 animate-fade-in">
+        <span className="text-xs text-red-500 ml-0.5 animate-fade-in">
           {error}
         </span>
       )}
@@ -65,3 +65,5 @@ export const Input = forwardRef(({
 });
 
 Input.displayName = 'Input';
+
+export default Input;

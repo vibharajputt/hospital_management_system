@@ -4,6 +4,7 @@ import com.example.hospital_backend.security.JwtAuthEntryPoint;
 import com.example.hospital_backend.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -40,6 +41,9 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
 
+                        // IMPORTANT: allow preflight
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                         // Public auth
                         .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login").permitAll()
 
@@ -57,7 +61,7 @@ public class SecurityConfig {
 
                         // Public doctor browse + slot view
                         .requestMatchers("/api/v1/doctors", "/api/v1/doctors/**").permitAll()
-                        .requestMatchers("/api/v1/doctor-schedules/doctor/**/slots").permitAll()
+                        .requestMatchers("/api/v1/doctor-schedules/doctor/*/slots").permitAll()
 
                         // Everything else needs login
                         .anyRequest().authenticated())

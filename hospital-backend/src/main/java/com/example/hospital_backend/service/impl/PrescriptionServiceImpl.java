@@ -66,7 +66,11 @@ public class PrescriptionServiceImpl implements PrescriptionService {
     private Patient currentPatient() {
         User u = currentUser();
         return patientRepository.findByUserId(u.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found"));
+                .orElseGet(() -> {
+                    Patient p = new Patient();
+                    p.setUser(u);
+                    return patientRepository.save(p);
+                });
     }
 
     private void notifyAndEmail(Long userId, NotificationType type, String title, String message) {
@@ -125,7 +129,7 @@ public class PrescriptionServiceImpl implements PrescriptionService {
 
         Prescription saved = prescriptionRepository.save(prescription);
 
-        // ✅ Trigger notification + email to patient
+        // Trigger notification + email to patient
         Long patientUserId = saved.getPatient().getUser().getId();
         String title = "New Prescription Added";
         String msg = "Dr. " + saved.getDoctor().getUser().getFullName()

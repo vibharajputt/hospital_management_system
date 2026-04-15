@@ -1,48 +1,11 @@
-import { apiPrivate } from './axios';
+import api from "./axios";
 
-// --- Dashboard ---
-export const getDoctorDashboardStats = async () => {
-    const res = await apiPrivate.get('/dashboard/doctor');
-    return res.data;
-};
+export const getDoctorsPaged = (params) =>
+    api.get("/api/v1/doctors/paged", { params }).then((r) => r.data);
 
-// --- Appointments ---
-export const getMyDoctorAppointments = async () => {
-    const res = await apiPrivate.get('/appointments/doctor/my');
-    return res.data;
-};
+export const getDoctorById = (id) => api.get(`/api/v1/doctors/${id}`).then((r) => r.data);
 
-export const updateAppointmentStatus = async (id, status) => {
-    // Assuming backend takes PUT /appointments/{id}/status 
-    const res = await apiPrivate.put(`/appointments/${id}/status`, { status });
-    return res.data;
-};
+export const getMyDoctorProfile = () => api.get("/api/v1/doctors/me").then((r) => r.data);
 
-// --- Schedules (Slots) ---
-export const createDoctorSchedule = async (scheduleData) => {
-    const res = await apiPrivate.post('/doctor-schedules', scheduleData);
-    return res.data;
-};
-
-export const getMySchedules = async () => {
-    const res = await apiPrivate.get('/doctor-schedules/my');
-    return res.data;
-};
-
-// --- Lab Tests ---
-export const orderLabTest = async (testData) => {
-    const res = await apiPrivate.post('/lab-tests', testData);
-    return res.data;
-};
-
-// --- Prescriptions ---
-export const writePrescription = async (prescriptionData) => {
-    const res = await apiPrivate.post('/prescriptions', prescriptionData);
-    return res.data;
-};
-
-// --- Doctor specific Patient Records view ---
-export const getPatientRecordsList = async (patientId) => {
-    const res = await apiPrivate.get(`/medical-records/patient/${patientId}`);
-    return res.data;
-};
+export const approveDoctor = (doctorId) =>
+    api.put(`/api/v1/doctors/${doctorId}/approve`).then((r) => r.data);

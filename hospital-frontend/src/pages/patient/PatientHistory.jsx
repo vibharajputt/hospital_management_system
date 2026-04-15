@@ -1,206 +1,430 @@
-import React, { useState, useEffect } from 'react';
-import { FileText, Calendar, Pill, Activity, Download, CheckCircle2, Clock, XCircle } from 'lucide-react';
-import { getMyAppointments, getMyRecords, getMyPrescriptions, getMyBills, payBill } from '../../api/patient';
-import { Button } from '../../components/ui/Button';
-import toast from 'react-hot-toast';
-import { format } from 'date-fns';
+import React, { useEffect, useMemo, useState } from "react";
+import Card from "../../components/ui/Card";
+import Button from "../../components/ui/Button";
+import Input from "../../components/ui/Input";
+import Alert from "../../components/ui/Alert";
+import Spinner from "../../components/ui/Spinner";
 
-const TabButton = ({ active, label, icon: Icon, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`flex items-center gap-2 px-6 py-3.5 font-medium transition-all rounded-t-xl
-      ${active 
-        ? 'text-primary-600 bg-white border-t border-x border-gray-100 shadow-[0_-4px_6px_-2px_rgba(0,0,0,0.02)]' 
-        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50/50 border-transparent'
-      }
-    `}
-  >
-    <Icon size={18} />
-    {label}
-  </button>
-);
+import { getMyPatientAppointments, cancelAppointment, rescheduleAppointment } from "../../api/appointments";
+import { getMyBills, payBill } from "../../api/billing";
+import { getMyLabTests, downloadLabReportUrl } from "../../api/labTests";
+import { getMyPrescriptions } from "../../api/prescriptions";
+import { getMyMedicalRecords, uploadMedicalRecord, downloadMedicalRecordUrl } from "../../api/medicalRecords";
+import { getMyNotifications, markAllRead, markNotificationRead } from "../../api/notifications";
 
-const StatusBadge = ({ status }) => {
-    const maps = {
-        'PENDING': { color: 'bg-yellow-100 text-yellow-700', icon: Clock },
-        'CONFIRMED': { color: 'bg-blue-100 text-blue-700', icon: CheckCircle2 },
-        'COMPLETED': { color: 'bg-green-100 text-green-700', icon: CheckCircle2 },
-        'CANCELLED': { color: 'bg-red-100 text-red-700', icon: XCircle },
-    };
-    const conf = maps[status] || maps['PENDING'];
-    const Icon = conf.icon;
+function TabButton({ active, onClick, children }) {
     return (
-        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${conf.color}`}>
-            <Icon size={12} />
-            {status}
-        </span>
-    )
+        <button
+            type="button"
+            onClick={onClick}
+            className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${active ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+                }`}
+        >
+            {children}
+        </button>
+    );
 }
 
-const AppointmentsList = () => {
+export default function PatientHistory() {
+    const tabs = useMemo(() => ([
+        { key: "appointments", label: "Appointments" },
+        { key: "bills", label: "Bills" },
+        { key: "lab", label: "Lab tests" },
+        { key: "prescriptions", label: "Prescriptions" },
+        { key: "records", label: "Medical records" },
+        { key: "notifications", label: "Notifications" },
+    ]), []);
+
+    const [tab, setTab] = useState("appointments");
+    const [loading, setLoading] = useState(true);
+    const [err, setErr] = useState("");
+
     const [appointments, setAppointments] = useState([]);
-    
-    useEffect(() => {
-        getMyAppointments().then(res => setAppointments(res)).catch(() => {
-            // mock
-            setAppointments([
-                { id: 1, doctorName: 'Dr. Sarah Jenkins', appointmentDateTime: '2026-10-24T10:00:00', reason: 'Annual Checkup', status: 'CONFIRMED' },
-                { id: 2, doctorName: 'Dr. Michael Chen', appointmentDateTime: '2026-09-15T14:30:00', reason: 'Headache', status: 'COMPLETED' },
-            ]);
-        });
-    }, []);
-
-    return (
-        <div className="bg-white rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-100 p-6 min-h-[400px]">
-             <h2 className="text-xl font-bold text-gray-900 mb-6">My Appointments</h2>
-             <div className="space-y-4">
-                 {appointments.map(apt => (
-                     <div key={apt.id} className="p-5 border border-gray-100 rounded-xl hover:border-primary-100 hover:bg-primary-50/30 transition-all flex items-center justify-between">
-                         <div>
-                             <div className="flex items-center gap-3 mb-2">
-                                 <h3 className="font-bold text-gray-900">{apt.doctorName}</h3>
-                                 <StatusBadge status={apt.status} />
-                             </div>
-                             <p className="text-sm text-gray-500 mb-1">{format(new Date(apt.appointmentDateTime), 'PPP p')}</p>
-                             <p className="text-sm text-gray-700 font-medium">{apt.reason}</p>
-                         </div>
-                         {apt.status !== 'COMPLETED' && apt.status !== 'CANCELLED' && (
-                             <Button variant="outline" size="sm">Cancel</Button>
-                         )}
-                     </div>
-                 ))}
-             </div>
-        </div>
-    );
-};
-
-const MedicalRecordsList = () => {
-     const [records, setRecords] = useState([]);
-    
-    useEffect(() => {
-        getMyRecords().then(res => setRecords(res)).catch(() => {
-            // mock
-            setRecords([
-                { id: 1, fileUrl: 'xray.pdf', description: 'Chest X-Ray', uploadedAt: '2026-09-01T10:00:00' },
-            ]);
-        });
-    }, []);
-
-    return (
-        <div className="bg-white rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-100 p-6 min-h-[400px]">
-             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Medical Records</h2>
-                <Button>Upload Record</Button>
-             </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 {records.map(rec => (
-                     <div key={rec.id} className="p-4 border border-gray-100 rounded-xl flex items-start gap-4 hover:shadow-md transition-shadow">
-                         <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg"><Activity size={24}/></div>
-                         <div className="flex-1">
-                             <h3 className="font-bold text-gray-900">{rec.description}</h3>
-                             <p className="text-sm text-gray-500 mb-3">Uploaded on {format(new Date(rec.uploadedAt), 'PPP')}</p>
-                             <Button variant="outline" size="sm" className="gap-2">
-                                 <Download size={16} /> Download
-                             </Button>
-                         </div>
-                     </div>
-                 ))}
-             </div>
-        </div>
-    );
-}
-
-const BillingList = () => {
     const [bills, setBills] = useState([]);
-    const [loading, setLoading] = useState(false);
-    
-    useEffect(() => {
-        getMyBills().then(res => setBills(res)).catch(() => {
-            // mock
-            setBills([
-                { id: 101, amount: 150.00, status: 'UNPAID', description: 'Consultation Fee - Dr. Jenkins', createdAt: '2026-10-24T11:00:00' },
-                { id: 102, amount: 80.00, status: 'PAID', description: 'Blood Test Lab Fees', createdAt: '2026-09-10T09:00:00' },
-            ]);
-        });
-    }, []);
+    const [lab, setLab] = useState([]);
+    const [prescriptions, setPrescriptions] = useState([]);
+    const [records, setRecords] = useState([]);
+    const [notifications, setNotifications] = useState([]);
 
-    const handlePay = async (id) => {
+    const [reschedule, setReschedule] = useState({ id: "", dt: "" });
+
+    const [upload, setUpload] = useState({ file: null, recordType: "LAB_REPORT", title: "", description: "" });
+    const [uploading, setUploading] = useState(false);
+
+    const loadAll = async () => {
+        setErr("");
         setLoading(true);
         try {
-            await payBill(id);
-            toast.success("Payment successful!");
-            setBills(bills.map(b => b.id === id ? {...b, status: 'PAID'} : b));
-        } catch(e) {
-            toast.error("Simulated payment failed, API endpoint might not exist.");
+            const results = await Promise.allSettled([
+                getMyPatientAppointments(),
+                getMyBills(),
+                getMyLabTests(),
+                getMyPrescriptions(),
+                getMyMedicalRecords(),
+                getMyNotifications(),
+            ]);
+            setAppointments(results[0].status === "fulfilled" ? results[0].value || [] : []);
+            setBills(results[1].status === "fulfilled" ? results[1].value || [] : []);
+            setLab(results[2].status === "fulfilled" ? results[2].value || [] : []);
+            setPrescriptions(results[3].status === "fulfilled" ? results[3].value || [] : []);
+            setRecords(results[4].status === "fulfilled" ? results[4].value || [] : []);
+            setNotifications(results[5].status === "fulfilled" ? results[5].value || [] : []);
+
+            const failures = results.filter(r => r.status === "rejected");
+            if (failures.length > 0) {
+                setErr("Some data could not be loaded. Please try refreshing.");
+            }
+        } catch (e) {
+            setErr(e?.response?.data?.message || "Failed to load data");
         } finally {
             setLoading(false);
         }
     };
 
+    useEffect(() => { loadAll(); }, []);
+
+    const onCancel = async (id) => {
+        try {
+            await cancelAppointment(id);
+            await loadAll();
+        } catch (e) {
+            setErr(e?.response?.data?.message || "Cancel failed");
+        }
+    };
+
+    const onReschedule = async () => {
+        if (!reschedule.id || !reschedule.dt) return;
+        try {
+            await rescheduleAppointment(reschedule.id, { appointmentDateTime: reschedule.dt, symptoms: "", notes: "" });
+            setReschedule({ id: "", dt: "" });
+            await loadAll();
+        } catch (e) {
+            setErr(e?.response?.data?.message || "Reschedule failed");
+        }
+    };
+
+    const onPay = async (billId) => {
+        try {
+            await payBill(billId, "UPI");
+            await loadAll();
+        } catch (e) {
+            setErr(e?.response?.data?.message || "Payment failed");
+        }
+    };
+
+    const onUpload = async (e) => {
+        e.preventDefault();
+        if (!upload.file || !upload.title) return;
+
+        setUploading(true);
+        setErr("");
+        try {
+            await uploadMedicalRecord(upload);
+            setUpload({ file: null, recordType: "LAB_REPORT", title: "", description: "" });
+            await loadAll();
+        } catch (ex) {
+            setErr(ex?.response?.data?.message || "Upload failed");
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const onMarkRead = async (id) => {
+        try {
+            await markNotificationRead(id);
+            await loadAll();
+        } catch (e) {
+            setErr(e?.response?.data?.message || "Action failed");
+        }
+    };
+
+    const onReadAll = async () => {
+        try {
+            await markAllRead();
+            await loadAll();
+        } catch (e) {
+            setErr(e?.response?.data?.message || "Action failed");
+        }
+    };
+
+    if (loading) return <div className="flex items-center gap-2 text-slate-700"><Spinner /> Loading</div>;
+
     return (
-        <div className="bg-white rounded-b-2xl rounded-tr-2xl shadow-sm border border-gray-100 p-6 min-h-[400px]">
-             <h2 className="text-xl font-bold text-gray-900 mb-6">Billing History</h2>
-             <div className="space-y-4">
-                 {bills.map(bill => (
-                     <div key={bill.id} className="p-5 border border-gray-100 rounded-xl flex items-center justify-between">
-                         <div>
-                             <h3 className="font-bold text-gray-900 text-lg">${bill.amount.toFixed(2)}</h3>
-                             <p className="text-gray-700">{bill.description}</p>
-                             <p className="text-sm text-gray-500 mt-1">{format(new Date(bill.createdAt), 'PPP')}</p>
-                         </div>
-                         <div className="flex flex-col items-end gap-3">
-                              <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${bill.status === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                 {bill.status}
-                             </span>
-                             {bill.status === 'UNPAID' && (
-                                 <Button size="sm" onClick={() => handlePay(bill.id)} isLoading={loading}>Pay Now</Button>
-                             )}
-                         </div>
-                     </div>
-                 ))}
-             </div>
+        <div className="space-y-6">
+            <Card
+                title="My health"
+                subtitle="Appointments, billing, lab, prescriptions, records and notifications"
+                right={<Button variant="secondary" onClick={loadAll}>Refresh</Button>}
+            >
+                {err ? <div className="mb-4"><Alert type="error" title="Error">{err}</Alert></div> : null}
+
+                <div className="flex flex-wrap gap-2">
+                    {tabs.map((t) => (
+                        <TabButton key={t.key} active={tab === t.key} onClick={() => setTab(t.key)}>
+                            {t.label}
+                        </TabButton>
+                    ))}
+                </div>
+
+                <div className="mt-6">
+                    {tab === "appointments" ? (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                <Input label="Appointment id" value={reschedule.id} onChange={(e) => setReschedule((p) => ({ ...p, id: e.target.value }))} />
+                                <Input label="New date time" placeholder="2026-04-13T10:30:00" value={reschedule.dt} onChange={(e) => setReschedule((p) => ({ ...p, dt: e.target.value }))} />
+                                <div className="flex items-end gap-2">
+                                    <Button className="w-full" onClick={onReschedule}>Reschedule</Button>
+                                </div>
+                            </div>
+
+                            <div className="overflow-x-auto rounded-xl border border-slate-200">
+                                <table className="min-w-full bg-white text-sm">
+                                    <thead className="bg-slate-50 text-left text-slate-600">
+                                        <tr>
+                                            <th className="px-4 py-3 font-semibold">Id</th>
+                                            <th className="px-4 py-3 font-semibold">Doctor</th>
+                                            <th className="px-4 py-3 font-semibold">Date</th>
+                                            <th className="px-4 py-3 font-semibold">Status</th>
+                                            <th className="px-4 py-3 font-semibold">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {appointments.map((a) => (
+                                            <tr key={a.id} className="border-t">
+                                                <td className="px-4 py-3 font-semibold">{a.id}</td>
+                                                <td className="px-4 py-3">{a.doctorName}</td>
+                                                <td className="px-4 py-3">{a.appointmentDateTime}</td>
+                                                <td className="px-4 py-3">{a.status}</td>
+                                                <td className="px-4 py-3">
+                                                    <Button variant="danger" size="sm" onClick={() => onCancel(a.id)}>Cancel</Button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {!appointments.length ? (
+                                            <tr><td className="px-4 py-6 text-slate-600" colSpan={5}>No appointments found</td></tr>
+                                        ) : null}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {tab === "bills" ? (
+                        <div className="overflow-x-auto rounded-xl border border-slate-200">
+                            <table className="min-w-full bg-white text-sm">
+                                <thead className="bg-slate-50 text-left text-slate-600">
+                                    <tr>
+                                        <th className="px-4 py-3 font-semibold">Invoice</th>
+                                        <th className="px-4 py-3 font-semibold">Amount</th>
+                                        <th className="px-4 py-3 font-semibold">Status</th>
+                                        <th className="px-4 py-3 font-semibold">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {bills.map((b) => (
+                                        <tr key={b.id} className="border-t">
+                                            <td className="px-4 py-3 font-semibold">{b.invoiceNumber}</td>
+                                            <td className="px-4 py-3">{b.amount}</td>
+                                            <td className="px-4 py-3">{b.status}</td>
+                                            <td className="px-4 py-3">
+                                                {b.status === "PENDING" ? (
+                                                    <Button size="sm" onClick={() => onPay(b.id)}>Pay</Button>
+                                                ) : (
+                                                    <span className="text-slate-600">Paid</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {!bills.length ? (
+                                        <tr><td className="px-4 py-6 text-slate-600" colSpan={4}>No bills found</td></tr>
+                                    ) : null}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : null}
+
+                    {tab === "lab" ? (
+                        <div className="overflow-x-auto rounded-xl border border-slate-200">
+                            <table className="min-w-full bg-white text-sm">
+                                <thead className="bg-slate-50 text-left text-slate-600">
+                                    <tr>
+                                        <th className="px-4 py-3 font-semibold">Test</th>
+                                        <th className="px-4 py-3 font-semibold">Status</th>
+                                        <th className="px-4 py-3 font-semibold">Report</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {lab.map((t) => (
+                                        <tr key={t.id} className="border-t">
+                                            <td className="px-4 py-3 font-semibold">{t.testName}</td>
+                                            <td className="px-4 py-3">{t.status}</td>
+                                            <td className="px-4 py-3">
+                                                <a
+                                                    className="font-semibold text-slate-900 underline underline-offset-4"
+                                                    href={downloadLabReportUrl(t.id)}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                >
+                                                    Download
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {!lab.length ? (
+                                        <tr><td className="px-4 py-6 text-slate-600" colSpan={3}>No lab tests found</td></tr>
+                                    ) : null}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : null}
+
+                    {tab === "prescriptions" ? (
+                        <div className="space-y-4">
+                            {prescriptions.map((p) => (
+                                <div key={p.id} className="rounded-2xl border border-slate-200 bg-white p-5">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div className="text-sm text-slate-600">Appointment {p.appointmentId}</div>
+                                        <div className="text-sm text-slate-600">{p.createdAt}</div>
+                                    </div>
+                                    <div className="mt-2 text-lg font-extrabold text-slate-900">{p.diagnosis || "Prescription"}</div>
+                                    {p.items?.length ? (
+                                        <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200">
+                                            <table className="min-w-full bg-white text-sm">
+                                                <thead className="bg-slate-50 text-left text-slate-600">
+                                                    <tr>
+                                                        <th className="px-4 py-3 font-semibold">Medicine</th>
+                                                        <th className="px-4 py-3 font-semibold">Dosage</th>
+                                                        <th className="px-4 py-3 font-semibold">Frequency</th>
+                                                        <th className="px-4 py-3 font-semibold">Duration</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {p.items.map((it) => (
+                                                        <tr key={it.id} className="border-t">
+                                                            <td className="px-4 py-3 font-semibold">{it.medicineName}</td>
+                                                            <td className="px-4 py-3">{it.dosage}</td>
+                                                            <td className="px-4 py-3">{it.frequency}</td>
+                                                            <td className="px-4 py-3">{it.duration}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            ))}
+                            {!prescriptions.length ? (
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                                    No prescriptions found
+                                </div>
+                            ) : null}
+                        </div>
+                    ) : null}
+
+                    {tab === "records" ? (
+                        <div className="space-y-6">
+                            <form onSubmit={onUpload} className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 md:grid-cols-2">
+                                <div className="space-y-1">
+                                    <label className="text-sm font-semibold text-slate-700">Record type</label>
+                                    <select
+                                        value={upload.recordType}
+                                        onChange={(e) => setUpload((p) => ({ ...p, recordType: e.target.value }))}
+                                        className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                                    >
+                                        <option value="LAB_REPORT">Lab report</option>
+                                        <option value="PRESCRIPTION">Prescription</option>
+                                        <option value="IMAGING">Imaging</option>
+                                        <option value="VACCINATION">Vaccination</option>
+                                        <option value="OTHER">Other</option>
+                                    </select>
+                                </div>
+                                <Input label="Title" value={upload.title} onChange={(e) => setUpload((p) => ({ ...p, title: e.target.value }))} />
+                                <Input label="Description" value={upload.description} onChange={(e) => setUpload((p) => ({ ...p, description: e.target.value }))} />
+                                <div className="space-y-1">
+                                    <label className="text-sm font-semibold text-slate-700">File</label>
+                                    <input
+                                        type="file"
+                                        className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+                                        onChange={(e) => setUpload((p) => ({ ...p, file: e.target.files?.[0] || null }))}
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <Button type="submit" disabled={uploading}>
+                                        {uploading ? "Uploading" : "Upload record"}
+                                    </Button>
+                                </div>
+                            </form>
+
+                            <div className="overflow-x-auto rounded-xl border border-slate-200">
+                                <table className="min-w-full bg-white text-sm">
+                                    <thead className="bg-slate-50 text-left text-slate-600">
+                                        <tr>
+                                            <th className="px-4 py-3 font-semibold">Title</th>
+                                            <th className="px-4 py-3 font-semibold">Type</th>
+                                            <th className="px-4 py-3 font-semibold">Date</th>
+                                            <th className="px-4 py-3 font-semibold">Download</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {records.map((r) => (
+                                            <tr key={r.id} className="border-t">
+                                                <td className="px-4 py-3 font-semibold">{r.title}</td>
+                                                <td className="px-4 py-3">{r.recordType}</td>
+                                                <td className="px-4 py-3">{r.createdAt}</td>
+                                                <td className="px-4 py-3">
+                                                    <a className="font-semibold text-slate-900 underline underline-offset-4" href={downloadMedicalRecordUrl(r.id)} target="_blank" rel="noreferrer">
+                                                        Download
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {!records.length ? (
+                                            <tr><td className="px-4 py-6 text-slate-600" colSpan={4}>No records found</td></tr>
+                                        ) : null}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {tab === "notifications" ? (
+                        <div className="space-y-4">
+                            <div className="flex justify-end">
+                                <Button variant="secondary" onClick={onReadAll}>Mark all read</Button>
+                            </div>
+                            <div className="space-y-3">
+                                {notifications.map((n) => (
+                                    <div key={n.id} className="rounded-2xl border border-slate-200 bg-white p-5">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div>
+                                                <div className="text-sm font-semibold text-slate-600">{n.type}</div>
+                                                <div className="mt-1 text-base font-extrabold text-slate-900">{n.title}</div>
+                                                <div className="mt-1 text-sm text-slate-700">{n.message}</div>
+                                                <div className="mt-2 text-xs text-slate-500">{n.createdAt}</div>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-2">
+                                                <div className={`text-xs font-semibold ${n.isRead ? "text-slate-500" : "text-emerald-700"}`}>
+                                                    {n.isRead ? "Read" : "Unread"}
+                                                </div>
+                                                {!n.isRead ? (
+                                                    <Button size="sm" variant="secondary" onClick={() => onMarkRead(n.id)}>
+                                                        Mark read
+                                                    </Button>
+                                                ) : null}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {!notifications.length ? (
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                                        No notifications
+                                    </div>
+                                ) : null}
+                            </div>
+                        </div>
+                    ) : null}
+                </div>
+            </Card>
         </div>
     );
-};
-
-const PatientHistory = () => {
-  const [activeTab, setActiveTab] = useState('appointments');
-
-  return (
-    <div className="max-w-5xl mx-auto space-y-6">
-       <div>
-         <h1 className="text-2xl font-bold text-gray-900">Patient History</h1>
-         <p className="text-gray-500">Manage your past and upcoming medical history elements securely.</p>
-       </div>
-
-      <div>
-        <div className="flex border-b border-gray-200 hide-scrollbar overflow-x-auto">
-          <TabButton 
-            active={activeTab === 'appointments'} 
-            onClick={() => setActiveTab('appointments')} 
-            label="Appointments" 
-            icon={Calendar} 
-          />
-          <TabButton 
-            active={activeTab === 'records'} 
-            onClick={() => setActiveTab('records')} 
-            label="Medical Records" 
-            icon={FileText} 
-          />
-          <TabButton 
-            active={activeTab === 'billing'} 
-            onClick={() => setActiveTab('billing')} 
-            label="Billing" 
-            icon={Activity} 
-          />
-        </div>
-        
-        {activeTab === 'appointments' && <AppointmentsList />}
-        {activeTab === 'records' && <MedicalRecordsList />}
-        {activeTab === 'billing' && <BillingList />}
-      </div>
-    </div>
-  );
-};
-
-export default PatientHistory;
+}

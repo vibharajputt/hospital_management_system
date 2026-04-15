@@ -5,6 +5,7 @@ export const Button = ({
   children,
   type = 'button',
   variant = 'primary',
+  size = 'md',
   fullWidth = false,
   isLoading = false,
   disabled = false,
@@ -12,41 +13,34 @@ export const Button = ({
   className = '',
   ...props
 }) => {
-  const baseClasses = 'relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95 disabled:pointer-events-none disabled:opacity-70';
+  const base = 'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer';
   
   const variants = {
-    primary: 'bg-primary-600 text-white shadow-lg shadow-primary-500/30 hover:bg-primary-700 hover:shadow-xl hover:shadow-primary-500/40 focus:ring-primary-500',
-    secondary: 'bg-secondary-500 text-white shadow-lg shadow-secondary-500/30 hover:bg-secondary-600 hover:shadow-xl hover:shadow-secondary-500/40 focus:ring-secondary-500',
-    outline: 'border-2 border-primary-600 text-primary-600 hover:bg-primary-50 focus:ring-primary-500',
-    ghost: 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-200',
+    primary: 'bg-indigo-600 text-white shadow-md hover:bg-indigo-700 hover:shadow-lg focus:ring-indigo-500',
+    secondary: 'bg-teal-500 text-white shadow-md hover:bg-teal-600 hover:shadow-lg focus:ring-teal-400',
+    outline: 'border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 focus:ring-indigo-500',
+    ghost: 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-300',
+    danger: 'bg-rose-600 text-white shadow-md hover:bg-rose-700 hover:shadow-lg focus:ring-rose-500',
   };
 
   const sizes = {
-    sm: 'px-4 py-2 text-sm',
-    md: 'px-6 py-3 text-base',
-    lg: 'px-8 py-4 text-lg',
+    sm: 'px-3 py-1.5 text-xs',
+    md: 'px-5 py-2.5 text-sm',
+    lg: 'px-7 py-3.5 text-base',
   };
-
-  const widthClass = fullWidth ? 'w-full' : '';
-  const opacityClass = disabled || isLoading ? 'opacity-70 cursor-not-allowed' : '';
 
   return (
     <button
       type={type}
-      className={`${baseClasses} ${variants[variant]} ${sizes.md} ${widthClass} ${opacityClass} ${className}`}
+      className={`${base} ${variants[variant] || variants.primary} ${sizes[size] || sizes.md} ${fullWidth ? 'w-full' : ''} ${className}`}
       disabled={disabled || isLoading}
       onClick={onClick}
       {...props}
     >
-      {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
-      <span className={isLoading ? 'opacity-0' : 'opacity-100 flex items-center justify-center gap-2'}>
-        {children}
-      </span>
-      {isLoading && (
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-           {/* Loader is already rendered above, but if we wanted to center it perfectly irrespective of content... */}
-        </span>
-      )}
+      {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+      {isLoading ? 'Loading...' : children}
     </button>
   );
 };
+
+export default Button;

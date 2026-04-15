@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, HeartPulse, User, Phone, Shield } from 'lucide-react';
+import { Mail, Lock, HeartPulse, User, Phone, Shield, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-import { register as registerApi } from '../../api/auth';
+import { registerUser as registerApi } from '../../api/auth';
 import { Input } from '../../components/ui/Input';
-import { Button } from '../../components/ui/Button';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -13,7 +12,7 @@ const Register = () => {
     email: '',
     phone: '',
     password: '',
-    role: 'PATIENT' // Default role
+    role: 'PATIENT'
   });
   const [loading, setLoading] = useState(false);
   const [formErrors, setFormErrors] = useState({});
@@ -42,7 +41,6 @@ const Register = () => {
       toast.success('Registration successful! Please login.');
       navigate('/login');
     } catch (error) {
-      console.error('Registration error:', error);
       toast.error(error.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
@@ -57,71 +55,33 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-primary-50 py-12 px-4 sm:px-6 lg:px-8">
-      {/* Animated background blobs */}
-      <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-primary-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
-      <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-secondary-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-teal-50 py-12 px-4">
+      <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-indigo-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+      <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
 
-      <div className="relative w-full max-w-lg">
-        <div className="glass-card p-8 sm:p-10 animate-slide-up">
+      <div className="relative w-full max-w-lg animate-slide-up">
+        <div className="bg-white rounded-3xl shadow-2xl shadow-indigo-100/50 border border-gray-100 p-8 sm:p-10">
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-tr from-primary-600 to-secondary-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary-500/30 mb-4 transform -rotate-6 hover:rotate-0 transition-transform duration-300">
+            <div className="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-teal-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 mb-5 transform -rotate-6 hover:rotate-0 transition-transform duration-500">
               <HeartPulse size={32} />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
-            <p className="text-gray-500 text-center">Join our hospital management network</p>
+            <h1 className="text-3xl font-extrabold text-gray-900 mb-1">Create Account</h1>
+            <p className="text-gray-500 text-sm text-center">Join our hospital management network</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <Input
-                id="fullName"
-                label="Full Name"
-                placeholder="John Doe"
-                icon={User}
-                value={formData.fullName}
-                onChange={handleChange}
-                error={formErrors.fullName}
-              />
-              <Input
-                id="phone"
-                label="Phone Number"
-                placeholder="+1 234 567 890"
-                icon={Phone}
-                value={formData.phone}
-                onChange={handleChange}
-                error={formErrors.phone}
-              />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input id="fullName" label="Full Name" placeholder="John Doe" icon={User} value={formData.fullName} onChange={handleChange} error={formErrors.fullName} />
+              <Input id="phone" label="Phone Number" placeholder="+91 98765 43210" icon={Phone} value={formData.phone} onChange={handleChange} error={formErrors.phone} />
             </div>
 
-            <Input
-              id="email"
-              type="email"
-              label="Email Address"
-              placeholder="you@example.com"
-              icon={Mail}
-              value={formData.email}
-              onChange={handleChange}
-              error={formErrors.email}
-            />
+            <Input id="email" type="email" label="Email Address" placeholder="you@example.com" icon={Mail} value={formData.email} onChange={handleChange} error={formErrors.email} />
+            <Input id="password" type="password" label="Password" placeholder="••••••••" icon={Lock} value={formData.password} onChange={handleChange} error={formErrors.password} />
 
-            <Input
-              id="password"
-              type="password"
-              label="Password"
-              placeholder="••••••••"
-              icon={Lock}
-              value={formData.password}
-              onChange={handleChange}
-              error={formErrors.password}
-            />
-
-            <div className="flex flex-col gap-1 w-full relative">
-              <label htmlFor="role" className="text-sm font-medium text-gray-700 ml-1">
-                Account Type
-              </label>
-              <div className="relative group">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 peer-focus:text-primary-500 transition-colors duration-300">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="role" className="text-sm font-semibold text-gray-700 ml-0.5">Account Type</label>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                   <Shield className="h-5 w-5" />
                 </div>
                 <select
@@ -129,28 +89,40 @@ const Register = () => {
                   name="role"
                   value={formData.role}
                   onChange={handleChange}
-                  className="peer w-full rounded-xl bg-white/50 backdrop-blur-sm border border-gray-200 px-4 py-3 pl-10 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 hover:border-primary-300 transition-all duration-300 shadow-sm appearance-none cursor-pointer"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pl-10 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 hover:border-indigo-300 transition-all shadow-sm appearance-none cursor-pointer"
                 >
                   <option value="PATIENT">Patient</option>
                   <option value="DOCTOR">Doctor</option>
                   <option value="ADMIN">Administrator</option>
                 </select>
-                <div className="absolute inset-y-0 right-3 flex items-center px-2 pointer-events-none text-gray-500">
+                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-500">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
               </div>
             </div>
 
-            <div className="pt-2">
-              <Button type="submit" fullWidth isLoading={loading}>
-                Create Account
-              </Button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 px-6 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-300 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm mt-2"
+            >
+              {loading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Creating account...
+                </>
+              ) : (
+                <>
+                  Create Account
+                  <ArrowRight size={18} />
+                </>
+              )}
+            </button>
           </form>
 
-          <div className="mt-8 text-center text-sm text-gray-600">
+          <div className="mt-6 text-center text-sm text-gray-500">
             Already have an account?{' '}
-            <Link to="/login" className="text-primary-600 font-semibold hover:underline transition-colors hover:text-primary-700">
+            <Link to="/login" className="text-indigo-600 font-bold hover:underline transition-colors hover:text-indigo-700">
               Sign in
             </Link>
           </div>

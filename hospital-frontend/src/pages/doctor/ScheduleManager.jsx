@@ -1,173 +1,138 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Clock, Plus, Trash2 } from 'lucide-react';
-import { createDoctorSchedule, getMySchedules } from '../../api/doctor';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import toast from 'react-hot-toast';
-import { format, addDays } from 'date-fns';
+import React, { useEffect, useState } from "react";
+import Card from "../../components/ui/Card";
+import Input from "../../components/ui/Input";
+import Button from "../../components/ui/Button";
+import Alert from "../../components/ui/Alert";
+import Spinner from "../../components/ui/Spinner";
 
-const ScheduleManager = () => {
-  const [schedules, setSchedules] = useState([]);
+import { createDoctorSchedule, getDoctorSchedules } from "../../api/doctorSchedules";
+import { getMyDoctorProfile } from "../../api/doctor";
+
+export default function ScheduleManager() {
+  const [doctorId, setDoctorId] = useState(null);
+  const [list, setList] = useState([]);
+  const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
-  
-  // Form State
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('17:00');
-  const [slotDurationInfo, setSlotDurationInfo] = useState('30'); // Duration in minutes
-  const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
-    const fetchSchedules = async () => {
-      try {
-        const data = await getMySchedules();
-        setSchedules(data);
-      } catch (error) {
-        // Fallback mock
-        setSchedules([
-          { id: 1, date: format(new Date(), 'yyyy-MM-dd'), startTime: '09:00:00', endTime: '12:00:00', generatedSlotsCount: 6 },
-          { id: 2, date: format(addDays(new Date(), 1), 'yyyy-MM-dd'), startTime: '10:00:00', endTime: '16:00:00', generatedSlotsCount: 12 },
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSchedules();
-  }, []);
+  const [form, setForm] = useState({
+    dayOfWeek: "MONDAY",
+    startTime: "10:00",
+    endTime: "13:00",
+    slotDurationMinutes: 30,
+    available: true,
+  });
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    setCreating(true);
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  const load = async () => {
+    setErr("");
+    setLoading(true);
     try {
-      // Assuming backend expects: date, startTime, endTime, slotDuration
-      const payload = {
-          date: date,
-          startTime: startTime + ":00",
-          endTime: endTime + ":00",
-          slotDuration: parseInt(slotDurationInfo)
-      };
-      
-      await createDoctorSchedule(payload);
-      toast.success('Schedule created and slots generated!');
-      
-      // refetch or append artificially
-      setSchedules([...schedules, { ...payload, id: Math.random(), generatedSlotsCount: 'Generated' }]);
-    } catch (error) {
-      toast.error('Failed to create schedule. Backend might reject overlap.');
+      const doc = await getMyDoctorProfile();
+      setDoctorId(doc.id);
+      const schedules = await getDoctorSchedules(doc.id);
+      setList(schedules || []);
+    } catch (e) {
+      setErr(e?.response?.data?.message || "Failed to load schedules");
     } finally {
-      setCreating(false);
+      setLoading(false);
     }
   };
 
+  useEffect(() => { load(); }, []);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!doctorId) return;
+    setErr("");
+
+    try {
+      await createDoctorSchedule({ doctorId, ...form, slotDurationMinutes: Number(form.slotDurationMinutes) });
+      await load();
+    } catch (ex) {
+      setErr(ex?.response?.data?.message || "Failed to create schedule");
+    }
+  };
+
+  if (loading) return <div className="flex items-center gap-2 text-slate-700"><Spinner /> Loading</div>;
+
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      <div>
-         <h1 className="text-2xl font-bold text-gray-900">Schedule Manager</h1>
-         <p className="text-gray-500">Define your availability to automatically generate bookable slots for patients.</p>
-      </div>
+    <div className="space-y-6">
+      <Card title="Schedule manager" subtitle="Create weekly slots for patients">
+        {err ? <div className="mb-4"><Alert type="error" title="Error">{err}</Alert></div> : null}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Create Schedule Form */}
-        <div className="lg:col-span-1">
-            <div className="glass-card p-6 sticky top-24">
-                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <Plus size={20} className="text-primary-600"/> Create New Schedule
-                </h2>
-                
-                <form onSubmit={handleCreate} className="space-y-4">
-                    <Input 
-                        id="date" 
-                        type="date" 
-                        label="Date" 
-                        value={date}
-                        onChange={e => setDate(e.target.value)}
-                        required
-                    />
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                        <Input 
-                            id="startTime" 
-                            type="time" 
-                            label="Start Time" 
-                            value={startTime}
-                            onChange={e => setStartTime(e.target.value)}
-                            required
-                        />
-                        <Input 
-                            id="endTime" 
-                            type="time" 
-                            label="End Time"
-                            value={endTime}
-                            onChange={e => setEndTime(e.target.value)}
-                            required 
-                        />
-                    </div>
-                    
-                    <Input 
-                        id="slotDuration" 
-                        type="number" 
-                        label="Slot Duration (Minutes)" 
-                        value={slotDurationInfo}
-                        onChange={e => setSlotDurationInfo(e.target.value)}
-                        required
-                        min="10"
-                        max="120"
-                    />
+        <form onSubmit={submit} className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 md:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-slate-700">Day of week</label>
+            <select
+              value={form.dayOfWeek}
+              onChange={(e) => set("dayOfWeek", e.target.value)}
+              className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+            >
+              <option>MONDAY</option>
+              <option>TUESDAY</option>
+              <option>WEDNESDAY</option>
+              <option>THURSDAY</option>
+              <option>FRIDAY</option>
+              <option>SATURDAY</option>
+              <option>SUNDAY</option>
+            </select>
+          </div>
 
-                    <div className="pt-2">
-                        <Button type="submit" fullWidth isLoading={creating}>
-                            Generate Slots
-                        </Button>
-                    </div>
-                </form>
-            </div>
+          <Input label="Start time" value={form.startTime} onChange={(e) => set("startTime", e.target.value)} placeholder="10:00" />
+          <Input label="End time" value={form.endTime} onChange={(e) => set("endTime", e.target.value)} placeholder="13:00" />
+          <Input
+            label="Slot duration (minutes)"
+            value={form.slotDurationMinutes}
+            onChange={(e) => set("slotDurationMinutes", e.target.value)}
+            placeholder="30"
+          />
+
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-slate-700">Available</label>
+            <select
+              value={String(form.available)}
+              onChange={(e) => set("available", e.target.value === "true")}
+              className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+            >
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>
+          </div>
+
+          <div className="md:col-span-2">
+            <Button type="submit">Create schedule</Button>
+          </div>
+        </form>
+
+        <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200">
+          <table className="min-w-full bg-white text-sm">
+            <thead className="bg-slate-50 text-left text-slate-600">
+              <tr>
+                <th className="px-4 py-3 font-semibold">Day</th>
+                <th className="px-4 py-3 font-semibold">Start</th>
+                <th className="px-4 py-3 font-semibold">End</th>
+                <th className="px-4 py-3 font-semibold">Duration</th>
+                <th className="px-4 py-3 font-semibold">Available</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((s) => (
+                <tr key={s.id} className="border-t">
+                  <td className="px-4 py-3 font-semibold">{s.dayOfWeek}</td>
+                  <td className="px-4 py-3">{s.startTime}</td>
+                  <td className="px-4 py-3">{s.endTime}</td>
+                  <td className="px-4 py-3">{s.slotDurationMinutes}</td>
+                  <td className="px-4 py-3">{String(!!s.available)}</td>
+                </tr>
+              ))}
+              {!list.length ? (
+                <tr><td className="px-4 py-6 text-slate-600" colSpan={5}>No schedules found</td></tr>
+              ) : null}
+            </tbody>
+          </table>
         </div>
-
-        {/* Existing Schedules */}
-        <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                    <CalendarIcon size={20} className="text-primary-600"/> Upcoming Schedules
-                </h2>
-                
-                {loading ? (
-                    <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div></div>
-                ) : (
-                    <div className="space-y-4">
-                        {schedules.map(sched => (
-                            <div key={sched.id} className="p-5 border border-gray-100 rounded-xl flex items-center justify-between hover:border-primary-200 hover:shadow-md transition-all group">
-                                <div className="flex items-center gap-4">
-                                    <div className="bg-primary-50 p-3 rounded-xl text-primary-600">
-                                        <CalendarIcon size={24} />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-gray-900">{format(new Date(sched.date), 'EEEE, MMMM do, yyyy')}</h3>
-                                        <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
-                                            <span className="flex items-center gap-1"><Clock size={14}/> {sched.startTime} - {sched.endTime}</span>
-                                            <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                                            <span className="font-medium text-primary-600">{sched.generatedSlotsCount} Slots Auto-Generated</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <button className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
-                                    <Trash2 size={20}/>
-                                </button>
-                            </div>
-                        ))}
-                        {schedules.length === 0 && (
-                             <div className="text-center py-10 text-gray-500">
-                                 No schedules created yet. Create one to allow patients to book.
-                             </div>
-                        )}
-                    </div>
-                )}
-            </div>
-        </div>
-
-      </div>
+      </Card>
     </div>
   );
-};
-
-export default ScheduleManager;
+}
