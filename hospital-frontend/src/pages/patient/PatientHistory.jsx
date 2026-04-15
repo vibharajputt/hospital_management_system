@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import Card from "../../components/ui/Card";
+import { 
+    CalendarCheck, Receipt, FlaskConical, FileText, ClipboardList, Bell, 
+    Download, CreditCard, Ban, CalendarClock, UploadCloud, CheckCircle2 
+} from "lucide-react";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Alert from "../../components/ui/Alert";
@@ -12,14 +15,18 @@ import { getMyPrescriptions } from "../../api/prescriptions";
 import { getMyMedicalRecords, uploadMedicalRecord, downloadMedicalRecordUrl } from "../../api/medicalRecords";
 import { getMyNotifications, markAllRead, markNotificationRead } from "../../api/notifications";
 
-function TabButton({ active, onClick, children }) {
+function TabButton({ active, onClick, icon: Icon, children }) {
     return (
         <button
             type="button"
             onClick={onClick}
-            className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${active ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
-                }`}
+            className={`flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition-all duration-300 ${
+                active 
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/30 scale-105" 
+                    : "bg-white text-gray-500 hover:bg-gray-50 border border-gray-100 hover:text-indigo-600"
+            }`}
         >
+            <Icon size={18} className={active ? "text-indigo-200" : ""} />
             {children}
         </button>
     );
@@ -27,12 +34,12 @@ function TabButton({ active, onClick, children }) {
 
 export default function PatientHistory() {
     const tabs = useMemo(() => ([
-        { key: "appointments", label: "Appointments" },
-        { key: "bills", label: "Bills" },
-        { key: "lab", label: "Lab tests" },
-        { key: "prescriptions", label: "Prescriptions" },
-        { key: "records", label: "Medical records" },
-        { key: "notifications", label: "Notifications" },
+        { key: "appointments", label: "Appointments", icon: CalendarCheck },
+        { key: "bills", label: "Bills", icon: Receipt },
+        { key: "lab", label: "Lab Tests", icon: FlaskConical },
+        { key: "prescriptions", label: "Prescriptions", icon: FileText },
+        { key: "records", label: "Medical Records", icon: ClipboardList },
+        { key: "notifications", label: "Notifications", icon: Bell },
     ]), []);
 
     const [tab, setTab] = useState("appointments");
@@ -47,7 +54,6 @@ export default function PatientHistory() {
     const [notifications, setNotifications] = useState([]);
 
     const [reschedule, setReschedule] = useState({ id: "", dt: "" });
-
     const [upload, setUpload] = useState({ file: null, recordType: "LAB_REPORT", title: "", description: "" });
     const [uploading, setUploading] = useState(false);
 
@@ -69,11 +75,6 @@ export default function PatientHistory() {
             setPrescriptions(results[3].status === "fulfilled" ? results[3].value || [] : []);
             setRecords(results[4].status === "fulfilled" ? results[4].value || [] : []);
             setNotifications(results[5].status === "fulfilled" ? results[5].value || [] : []);
-
-            const failures = results.filter(r => r.status === "rejected");
-            if (failures.length > 0) {
-                setErr("Some data could not be loaded. Please try refreshing.");
-            }
         } catch (e) {
             setErr(e?.response?.data?.message || "Failed to load data");
         } finally {
@@ -147,284 +148,316 @@ export default function PatientHistory() {
         }
     };
 
-    if (loading) return <div className="flex items-center gap-2 text-slate-700"><Spinner /> Loading</div>;
+    if (loading) return (
+        <div className="h-[60vh] flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                <p className="text-gray-500 font-medium">Loading your health history...</p>
+            </div>
+        </div>
+    );
 
     return (
-        <div className="space-y-6">
-            <Card
-                title="My health"
-                subtitle="Appointments, billing, lab, prescriptions, records and notifications"
-                right={<Button variant="secondary" onClick={loadAll}>Refresh</Button>}
-            >
-                {err ? <div className="mb-4"><Alert type="error" title="Error">{err}</Alert></div> : null}
-
-                <div className="flex flex-wrap gap-2">
-                    {tabs.map((t) => (
-                        <TabButton key={t.key} active={tab === t.key} onClick={() => setTab(t.key)}>
-                            {t.label}
-                        </TabButton>
-                    ))}
+        <div className="space-y-8 animate-fade-in max-w-6xl mx-auto">
+            {/* Header section with gradient */}
+            <div className="bg-gradient-to-br from-indigo-900 to-indigo-800 rounded-3xl p-8 sm:p-10 text-white shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-50 transform translate-x-1/2 -translate-y-1/2"></div>
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-50 transform -translate-x-1/2 translate-y-1/2"></div>
+                
+                <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+                    <div>
+                        <h1 className="text-3xl sm:text-4xl font-extrabold mb-3">Health Records</h1>
+                        <p className="text-indigo-100/80 text-lg max-w-xl">Manage your appointments, lab results, billing, and prescriptions.</p>
+                    </div>
                 </div>
+            </div>
 
-                <div className="mt-6">
-                    {tab === "appointments" ? (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                                <Input label="Appointment id" value={reschedule.id} onChange={(e) => setReschedule((p) => ({ ...p, id: e.target.value }))} />
-                                <Input label="New date time" placeholder="2026-04-13T10:30:00" value={reschedule.dt} onChange={(e) => setReschedule((p) => ({ ...p, dt: e.target.value }))} />
-                                <div className="flex items-end gap-2">
-                                    <Button className="w-full" onClick={onReschedule}>Reschedule</Button>
-                                </div>
-                            </div>
+            {err ? <Alert type="error" title="Error">{err}</Alert> : null}
 
-                            <div className="overflow-x-auto rounded-xl border border-slate-200">
-                                <table className="min-w-full bg-white text-sm">
-                                    <thead className="bg-slate-50 text-left text-slate-600">
-                                        <tr>
-                                            <th className="px-4 py-3 font-semibold">Id</th>
-                                            <th className="px-4 py-3 font-semibold">Doctor</th>
-                                            <th className="px-4 py-3 font-semibold">Date</th>
-                                            <th className="px-4 py-3 font-semibold">Status</th>
-                                            <th className="px-4 py-3 font-semibold">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {appointments.map((a) => (
-                                            <tr key={a.id} className="border-t">
-                                                <td className="px-4 py-3 font-semibold">{a.id}</td>
-                                                <td className="px-4 py-3">{a.doctorName}</td>
-                                                <td className="px-4 py-3">{a.appointmentDateTime}</td>
-                                                <td className="px-4 py-3">{a.status}</td>
-                                                <td className="px-4 py-3">
-                                                    <Button variant="danger" size="sm" onClick={() => onCancel(a.id)}>Cancel</Button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {!appointments.length ? (
-                                            <tr><td className="px-4 py-6 text-slate-600" colSpan={5}>No appointments found</td></tr>
-                                        ) : null}
-                                    </tbody>
-                                </table>
+            {/* Custom Tabs */}
+            <div className="flex flex-wrap items-center gap-3 py-2">
+                {tabs.map((t) => (
+                    <TabButton key={t.key} active={tab === t.key} onClick={() => setTab(t.key)} icon={t.icon}>
+                        {t.label}
+                    </TabButton>
+                ))}
+            </div>
+
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8 transition-all duration-500">
+                {/* APPOINTMENTS */}
+                {tab === "appointments" && (
+                    <div className="space-y-8 animate-slide-up">
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6">
+                            <h3 className="text-lg font-bold text-indigo-900 mb-4 flex items-center gap-2">
+                                <CalendarClock className="text-indigo-600" size={20} /> Reschedule Appointment
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                <Input label="Appointment ID" placeholder="e.g. 1" value={reschedule.id} onChange={(e) => setReschedule((p) => ({ ...p, id: e.target.value }))} className="!bg-white" />
+                                <Input label="New Date & Time" type="datetime-local" value={reschedule.dt} onChange={(e) => setReschedule((p) => ({ ...p, dt: e.target.value }))} className="!bg-white" />
+                                <Button onClick={onReschedule} className="h-[46px] shadow-md hover:shadow-lg">Reschedule Now</Button>
                             </div>
                         </div>
-                    ) : null}
 
-                    {tab === "bills" ? (
-                        <div className="overflow-x-auto rounded-xl border border-slate-200">
+                        <div className="overflow-x-auto rounded-2xl border border-gray-100 shadow-sm">
                             <table className="min-w-full bg-white text-sm">
-                                <thead className="bg-slate-50 text-left text-slate-600">
+                                <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 uppercase text-xs font-bold">
                                     <tr>
-                                        <th className="px-4 py-3 font-semibold">Invoice</th>
-                                        <th className="px-4 py-3 font-semibold">Amount</th>
-                                        <th className="px-4 py-3 font-semibold">Status</th>
-                                        <th className="px-4 py-3 font-semibold">Action</th>
+                                        <th className="px-6 py-4">ID</th>
+                                        <th className="px-6 py-4">Doctor</th>
+                                        <th className="px-6 py-4">Date Time</th>
+                                        <th className="px-6 py-4">Status</th>
+                                        <th className="px-6 py-4 text-right">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    {bills.map((b) => (
-                                        <tr key={b.id} className="border-t">
-                                            <td className="px-4 py-3 font-semibold">{b.invoiceNumber}</td>
-                                            <td className="px-4 py-3">{b.amount}</td>
-                                            <td className="px-4 py-3">{b.status}</td>
-                                            <td className="px-4 py-3">
-                                                {b.status === "PENDING" ? (
-                                                    <Button size="sm" onClick={() => onPay(b.id)}>Pay</Button>
-                                                ) : (
-                                                    <span className="text-slate-600">Paid</span>
+                                <tbody className="divide-y divide-gray-100">
+                                    {appointments.map((a) => (
+                                        <tr key={a.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-6 py-4 font-bold text-gray-900">#{a.id}</td>
+                                            <td className="px-6 py-4 font-semibold text-indigo-900">{a.doctorName}</td>
+                                            <td className="px-6 py-4 text-gray-600 font-medium">
+                                                {new Date(a.appointmentDateTime).toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                                    a.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-700' :
+                                                    a.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
+                                                    a.status === 'CANCELLED' ? 'bg-rose-100 text-rose-700' :
+                                                    'bg-amber-100 text-amber-700'
+                                                }`}>
+                                                    {a.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 flex justify-end">
+                                                {a.status !== 'CANCELLED' && a.status !== 'COMPLETED' && (
+                                                    <Button variant="danger" size="sm" onClick={() => onCancel(a.id)} className="flex items-center gap-1 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 hover:text-rose-700 shadow-none">
+                                                        <Ban size={14} /> Cancel
+                                                    </Button>
                                                 )}
                                             </td>
                                         </tr>
                                     ))}
-                                    {!bills.length ? (
-                                        <tr><td className="px-4 py-6 text-slate-600" colSpan={4}>No bills found</td></tr>
-                                    ) : null}
                                 </tbody>
                             </table>
                         </div>
-                    ) : null}
+                    </div>
+                )}
 
-                    {tab === "lab" ? (
-                        <div className="overflow-x-auto rounded-xl border border-slate-200">
-                            <table className="min-w-full bg-white text-sm">
-                                <thead className="bg-slate-50 text-left text-slate-600">
-                                    <tr>
-                                        <th className="px-4 py-3 font-semibold">Test</th>
-                                        <th className="px-4 py-3 font-semibold">Status</th>
-                                        <th className="px-4 py-3 font-semibold">Report</th>
+                {/* BILLS */}
+                {tab === "bills" && (
+                    <div className="animate-slide-up overflow-x-auto rounded-2xl border border-gray-100 shadow-sm">
+                        <table className="min-w-full bg-white text-sm">
+                            <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 uppercase text-xs font-bold">
+                                <tr>
+                                    <th className="px-6 py-4">Invoice #</th>
+                                    <th className="px-6 py-4">Amount</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {bills.map((b) => (
+                                    <tr key={b.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4 font-bold text-gray-900">{b.invoiceNumber}</td>
+                                        <td className="px-6 py-4 font-bold text-gray-800">₹{b.amount}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                                b.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                                            }`}>
+                                                {b.status === 'PAID' ? '✓ PAID' : 'PENDING'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 flex justify-end">
+                                            {b.status === "PENDING" ? (
+                                                <Button size="sm" onClick={() => onPay(b.id)} className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border-0 shadow-md text-white">
+                                                    <CreditCard size={14} /> Pay Now
+                                                </Button>
+                                            ) : (
+                                                <span className="text-gray-400 font-medium">No action needed</span>
+                                            )}
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {lab.map((t) => (
-                                        <tr key={t.id} className="border-t">
-                                            <td className="px-4 py-3 font-semibold">{t.testName}</td>
-                                            <td className="px-4 py-3">{t.status}</td>
-                                            <td className="px-4 py-3">
-                                                <a
-                                                    className="font-semibold text-slate-900 underline underline-offset-4"
-                                                    href={downloadLabReportUrl(t.id)}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                >
-                                                    Download
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {!lab.length ? (
-                                        <tr><td className="px-4 py-6 text-slate-600" colSpan={3}>No lab tests found</td></tr>
-                                    ) : null}
-                                </tbody>
-                            </table>
-                        </div>
-                    ) : null}
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
 
-                    {tab === "prescriptions" ? (
-                        <div className="space-y-4">
-                            {prescriptions.map((p) => (
-                                <div key={p.id} className="rounded-2xl border border-slate-200 bg-white p-5">
-                                    <div className="flex flex-wrap items-center justify-between gap-2">
-                                        <div className="text-sm text-slate-600">Appointment {p.appointmentId}</div>
-                                        <div className="text-sm text-slate-600">{p.createdAt}</div>
-                                    </div>
-                                    <div className="mt-2 text-lg font-extrabold text-slate-900">{p.diagnosis || "Prescription"}</div>
-                                    {p.items?.length ? (
-                                        <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200">
-                                            <table className="min-w-full bg-white text-sm">
-                                                <thead className="bg-slate-50 text-left text-slate-600">
-                                                    <tr>
-                                                        <th className="px-4 py-3 font-semibold">Medicine</th>
-                                                        <th className="px-4 py-3 font-semibold">Dosage</th>
-                                                        <th className="px-4 py-3 font-semibold">Frequency</th>
-                                                        <th className="px-4 py-3 font-semibold">Duration</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {p.items.map((it) => (
-                                                        <tr key={it.id} className="border-t">
-                                                            <td className="px-4 py-3 font-semibold">{it.medicineName}</td>
-                                                            <td className="px-4 py-3">{it.dosage}</td>
-                                                            <td className="px-4 py-3">{it.frequency}</td>
-                                                            <td className="px-4 py-3">{it.duration}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    ) : null}
-                                </div>
-                            ))}
-                            {!prescriptions.length ? (
-                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                                    No prescriptions found
-                                </div>
-                            ) : null}
-                        </div>
-                    ) : null}
+                {/* LAB TESTS */}
+                {tab === "lab" && (
+                    <div className="animate-slide-up overflow-x-auto rounded-2xl border border-gray-100 shadow-sm">
+                        <table className="min-w-full bg-white text-sm">
+                            <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 uppercase text-xs font-bold">
+                                <tr>
+                                    <th className="px-6 py-4">Test Name</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4 text-right">Report</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {lab.map((t) => (
+                                    <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4 font-semibold text-gray-900">{t.testName}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                                t.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                            }`}>
+                                                {t.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 flex justify-end">
+                                            <a className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition-colors" href={downloadLabReportUrl(t.id)} target="_blank" rel="noreferrer">
+                                                <Download size={14} /> Download
+                                            </a>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
 
-                    {tab === "records" ? (
-                        <div className="space-y-6">
-                            <form onSubmit={onUpload} className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 md:grid-cols-2">
+                {/* RECORDS */}
+                {tab === "records" && (
+                    <div className="animate-slide-up space-y-8">
+                        <div className="bg-white border text-center border-gray-100 shadow-sm rounded-2xl p-6">
+                            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center justify-center gap-2">
+                                <UploadCloud className="text-indigo-600" size={24} /> Upload New Record
+                            </h3>
+                            <form onSubmit={onUpload} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
                                 <div className="space-y-1">
-                                    <label className="text-sm font-semibold text-slate-700">Record type</label>
+                                    <label className="text-sm font-semibold text-gray-700 ml-1">Record Type</label>
                                     <select
                                         value={upload.recordType}
                                         onChange={(e) => setUpload((p) => ({ ...p, recordType: e.target.value }))}
-                                        className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
+                                        className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 outline-none"
                                     >
-                                        <option value="LAB_REPORT">Lab report</option>
+                                        <option value="LAB_REPORT">Lab Report</option>
                                         <option value="PRESCRIPTION">Prescription</option>
-                                        <option value="IMAGING">Imaging</option>
+                                        <option value="IMAGING">Imaging (X-Ray, MRI)</option>
                                         <option value="VACCINATION">Vaccination</option>
                                         <option value="OTHER">Other</option>
                                     </select>
                                 </div>
-                                <Input label="Title" value={upload.title} onChange={(e) => setUpload((p) => ({ ...p, title: e.target.value }))} />
-                                <Input label="Description" value={upload.description} onChange={(e) => setUpload((p) => ({ ...p, description: e.target.value }))} />
-                                <div className="space-y-1">
-                                    <label className="text-sm font-semibold text-slate-700">File</label>
+                                <Input label="Title" placeholder="e.g. Blood Test Results" value={upload.title} onChange={(e) => setUpload((p) => ({ ...p, title: e.target.value }))} />
+                                <div className="md:col-span-2">
+                                    <Input label="Description (optional)" placeholder="Details about this record" value={upload.description} onChange={(e) => setUpload((p) => ({ ...p, description: e.target.value }))} />
+                                </div>
+                                <div className="space-y-1 md:col-span-2 border-2 border-dashed border-indigo-100 bg-indigo-50/30 rounded-xl p-4 flex flex-col items-center justify-center">
                                     <input
                                         type="file"
-                                        className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
+                                        className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
                                         onChange={(e) => setUpload((p) => ({ ...p, file: e.target.files?.[0] || null }))}
                                     />
                                 </div>
-                                <div className="md:col-span-2">
+                                <div className="md:col-span-2 flex justify-end">
                                     <Button type="submit" disabled={uploading}>
-                                        {uploading ? "Uploading" : "Upload record"}
+                                        {uploading ? "Uploading..." : "Save Record"}
                                     </Button>
                                 </div>
                             </form>
-
-                            <div className="overflow-x-auto rounded-xl border border-slate-200">
-                                <table className="min-w-full bg-white text-sm">
-                                    <thead className="bg-slate-50 text-left text-slate-600">
-                                        <tr>
-                                            <th className="px-4 py-3 font-semibold">Title</th>
-                                            <th className="px-4 py-3 font-semibold">Type</th>
-                                            <th className="px-4 py-3 font-semibold">Date</th>
-                                            <th className="px-4 py-3 font-semibold">Download</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {records.map((r) => (
-                                            <tr key={r.id} className="border-t">
-                                                <td className="px-4 py-3 font-semibold">{r.title}</td>
-                                                <td className="px-4 py-3">{r.recordType}</td>
-                                                <td className="px-4 py-3">{r.createdAt}</td>
-                                                <td className="px-4 py-3">
-                                                    <a className="font-semibold text-slate-900 underline underline-offset-4" href={downloadMedicalRecordUrl(r.id)} target="_blank" rel="noreferrer">
-                                                        Download
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {!records.length ? (
-                                            <tr><td className="px-4 py-6 text-slate-600" colSpan={4}>No records found</td></tr>
-                                        ) : null}
-                                    </tbody>
-                                </table>
-                            </div>
                         </div>
-                    ) : null}
-
-                    {tab === "notifications" ? (
-                        <div className="space-y-4">
-                            <div className="flex justify-end">
-                                <Button variant="secondary" onClick={onReadAll}>Mark all read</Button>
-                            </div>
-                            <div className="space-y-3">
-                                {notifications.map((n) => (
-                                    <div key={n.id} className="rounded-2xl border border-slate-200 bg-white p-5">
-                                        <div className="flex items-start justify-between gap-4">
-                                            <div>
-                                                <div className="text-sm font-semibold text-slate-600">{n.type}</div>
-                                                <div className="mt-1 text-base font-extrabold text-slate-900">{n.title}</div>
-                                                <div className="mt-1 text-sm text-slate-700">{n.message}</div>
-                                                <div className="mt-2 text-xs text-slate-500">{n.createdAt}</div>
-                                            </div>
-                                            <div className="flex flex-col items-end gap-2">
-                                                <div className={`text-xs font-semibold ${n.isRead ? "text-slate-500" : "text-emerald-700"}`}>
-                                                    {n.isRead ? "Read" : "Unread"}
-                                                </div>
-                                                {!n.isRead ? (
-                                                    <Button size="sm" variant="secondary" onClick={() => onMarkRead(n.id)}>
-                                                        Mark read
-                                                    </Button>
-                                                ) : null}
-                                            </div>
+                        <div className="overflow-x-auto rounded-2xl border border-gray-100 shadow-sm">
+                            <table className="min-w-full bg-white text-sm">
+                                <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 uppercase text-xs font-bold">
+                                    <tr>
+                                        <th className="px-6 py-4">Title</th>
+                                        <th className="px-6 py-4">Type</th>
+                                        <th className="px-6 py-4">Upload Date</th>
+                                        <th className="px-6 py-4 text-right">Download</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {records.map((r) => (
+                                        <tr key={r.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 font-bold text-gray-900">{r.title}</td>
+                                            <td className="px-6 py-4 font-medium text-gray-500">{r.recordType.replace('_', ' ')}</td>
+                                            <td className="px-6 py-4 text-gray-500">{new Date(r.createdAt).toLocaleDateString()}</td>
+                                            <td className="px-6 py-4 flex justify-end">
+                                                <a className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition-colors" href={downloadMedicalRecordUrl(r.id)} target="_blank" rel="noreferrer">
+                                                    <Download size={14} /> File
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+                
+                {/* NOTIFICATIONS */}
+                {tab === "notifications" && (
+                    <div className="animate-slide-up space-y-4">
+                        <div className="flex justify-between items-center bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                            <div className="font-semibold text-gray-600">You have {notifications.filter(n => !n.isRead).length} unread notifications</div>
+                            <Button variant="outline" size="sm" onClick={onReadAll} className="bg-white">Mark all read</Button>
+                        </div>
+                        {notifications.map((n) => (
+                            <div key={n.id} className={`rounded-2xl border p-5 transition-colors ${!n.isRead ? 'bg-indigo-50/50 border-indigo-100 shadow-sm' : 'bg-white border-gray-100'}`}>
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex gap-4">
+                                        <div className={`p-3 rounded-full h-fit flex-shrink-0 ${!n.isRead ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400'}`}>
+                                            <Bell size={20} />
+                                        </div>
+                                        <div>
+                                            <div className="text-xs font-bold text-gray-500 tracking-wider uppercase mb-1">{n.type.replace('_', ' ')}</div>
+                                            <div className="text-base font-bold text-gray-900">{n.title}</div>
+                                            <div className="mt-1 text-sm text-gray-600">{n.message}</div>
+                                            <div className="mt-2 text-xs font-medium text-gray-400">{new Date(n.createdAt).toLocaleString()}</div>
                                         </div>
                                     </div>
-                                ))}
-                                {!notifications.length ? (
-                                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                                        No notifications
-                                    </div>
-                                ) : null}
+                                    {!n.isRead && (
+                                        <Button size="sm" variant="ghost" onClick={() => onMarkRead(n.id)} className="text-indigo-600 hover:bg-indigo-50 whitespace-nowrap">
+                                            <CheckCircle2 size={16} /> Mark read
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    ) : null}
-                </div>
-            </Card>
+                        ))}
+                    </div>
+                )}
+
+                {/* PRESCRIPTIONS */}
+                {tab === "prescriptions" && (
+                    <div className="animate-slide-up grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {prescriptions.map((p) => (
+                            <div key={p.id} className="rounded-3xl border border-gray-100 bg-white shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                                <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-5 text-white flex justify-between items-center">
+                                    <div>
+                                        <h3 className="font-extrabold text-lg flex items-center gap-2">
+                                            <FileText size={20} /> {p.diagnosis || "Medical Prescription"}
+                                        </h3>
+                                        <p className="text-emerald-100 text-sm mt-1">Appt #{p.appointmentId} • {new Date(p.createdAt).toLocaleDateString()}</p>
+                                    </div>
+                                </div>
+                                <div className="p-5">
+                                    <div className="space-y-3">
+                                        {p.items?.map((it) => (
+                                            <div key={it.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                                <div>
+                                                    <div className="font-bold text-gray-900">{it.medicineName}</div>
+                                                    <div className="text-xs text-gray-500">{it.duration}</div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-sm font-bold text-teal-600">{it.dosage}</div>
+                                                    <div className="text-xs font-medium text-gray-500">{it.frequency}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        {!prescriptions.length && (
+                            <div className="col-span-2 text-center py-20 bg-gray-50 rounded-2xl border border-gray-100">
+                                <FileText size={48} className="text-gray-300 mx-auto mb-3" />
+                                <h3 className="font-bold text-gray-900 text-lg">No Prescriptions Yet</h3>
+                                <p className="text-gray-500 text-sm">Your doctors have not issued any prescriptions.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
