@@ -19,11 +19,8 @@ public class CorsConfig {
         // If you ever need cookies -> true + then use allowedOriginPatterns (not *)
         config.setAllowCredentials(false);
 
-        config.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "http://localhost:5174",
-                "http://localhost:5175"));
+        // Allow all origins when testing/deploying (especially for Render)
+        config.setAllowedOriginPatterns(List.of("*"));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
